@@ -1,0 +1,43 @@
+---
+title: "CP2"
+author: "Daniyel Rocha"
+date: "23 de junho de 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#analisar contratação de professores, qual UA tem mais visitantes, substitutos (DESCRICAO CARGO) etc, ou qual unidade tem mais funções gratificadas
+library(tidyverse)
+ua_filtradas <- read.csv('https://raw.githubusercontent.com/nazareno/tamanhos-da-ufcg/master/ufcg-201704-unidades-academicas-filtradas.csv')
+ua_tudo <- read.csv('https://raw.githubusercontent.com/nazareno/tamanhos-da-ufcg/master/ufcg-201704-tudo.csv')
+ua_sumario <- read.csv('https://raw.githubusercontent.com/nazareno/tamanhos-da-ufcg/master/ufcg-201704-sumario-UAs-wide.csv')
+matriculas_por_ua <- read.csv('https://raw.githubusercontent.com/nazareno/tamanhos-da-ufcg/master/16-2_matriculas_por_unidade.csv')
+```
+
+UNIDADE ACADEMICA (GRUPO) QUE TEM MUITOS PROFESSORES SUBSTITUTO/TEMPORARIOS QUE DAO AULAS PRA MUITOS ALUNOS, E NAO NECESSARIAMENTE TEM MUITOS ALUNOS MATRICULADOS NESSA UA
+observar a quantidade de alunos matriculadas naquela UA 
+
+Filtrar quem está em unidade academica
+
+```{r}
+# tem_ua <- ua_tudo %>%
+#   filter(grepl("UNIDADE ACA", UORG_EXERCICIO))
+#merge(x = ua_sumario, y = matriculas_por_ua, by = "CustomerId", all = TRUE)
+merged <- merge(ua_sumario, matriculas_por_ua, by.x=c("UORG_LOTACAO"), by.y=c("NOME_FEDERAL"))
+
+ua_sumario %>% 
+  inner_join(matriculas_por_ua, by = c("UORG_LOTACAO" = "NOME_FEDERAL")) %>%
+  mutate(duplicata = duplicated(UORG_LOTACAO)) %>% 
+  select(DESCRICAO, UORG_LOTACAO, duplicata, CAMPUS) %>% 
+  View()
+
+```
+
+REMOVER UA QUE APRESENTAM DUPLICATAS
+
+TOTAL DE FUNCIONARIOS, PERCENTUAL DE PROFESSORES, ALGUMA SOBRE IDADE E TOTAL DE MATRICULAS POR UNIDADE ACADEMICA
+
