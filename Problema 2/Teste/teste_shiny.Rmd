@@ -1,0 +1,88 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+install.packages("shiny")
+```
+
+```{r}
+library(shiny)
+runExample("01_hello")
+```
+
+```{r}
+library(ggplot2)
+library(plotly)
+library(dplyr, warn.conflicts = F)
+selected_series <- series_from_imdb %>% 
+  filter(series_name %in% c("Breaking Bad", "Dexter", "Friends", "How I Met Your Mother", "Black Mirror",
+                            "House of Cards", "Dexter", "Sense8", "Daredevil", "Homeland",
+                            "Orphan Black", "Game of Thrones"))
+
+#seleciona os últimos ep de cada temporada
+last_ep_season <- selected_series %>%
+  filter(series_name %in% c("Breaking Bad")) %>%
+  group_by(series_name, season) %>%
+  slice(which.max(season_ep))
+
+s <- selected_series %>%
+  filter(series_name %in% c("Breaking Bad")) %>%
+  ggplot(aes(x = series_ep, y = UserRating, colour=factor(season), size = UserVotes)) +
+  geom_point(aes(text = paste(
+    "Nome do episódio:", Episode, "<br>",
+    "Avaliação do episódio:", UserRating, "<br>",
+    "Nº do episódio:", series_ep, "<br>",
+    "Nº da temporada:", season, "<br>",
+    "Votos do episódio:", UserVotes)
+    )) +
+  geom_point(data = last_ep_season, aes(x = series_ep, y = UserRating, size = UserVotes,
+    text = paste(
+    "Nome do episódio:", Episode, "<br>",
+    "Avaliação do episódio:", UserRating, "<br>",
+    "Nº do episódio:", series_ep, "<br>",
+    "Nº da temporada:", season, "<br>",
+    "Votos do episódio:", UserVotes)), colour = "red") +
+  labs(col = "Temporadas") +
+  xlab("Nº do Episódio") + ylab("Avaliação do Usuário") +
+  ggtitle("Avaliação do último episódio de cada temporada")
+  #theme_minimal()
+ggplotly(s, tooltip = c("text")) %>%
+  layout(autosize = T, width = 800, height = 700, margin = list(l = 50, r = 150, b = 100, t = 100, pad = 4))
+
+# last_ep_season %>%
+#   filter(series_name %in% c("Breaking Bad")) %>%
+#   ggplot(aes(x = series_ep, y = UserRating, colour=factor(season), size = UserVotes)) +
+#   geom_point()
+
+selected_series %>%
+      filter(series_name %in% c("Breaking Bad")) %>%
+      ggplot(aes(x = series_ep, y = UserRating, colour=factor(season), size = UserVotes)) +
+      geom_point() +
+      geom_point(data = last_ep_season, aes(x = series_ep, y = UserRating, size = UserVotes), colour = "red") +
+      labs(col = "Temporada") + 
+      xlab("Nº do Episódio") + ylab("Avaliação do Usuário")
+```
+
+```{r}
+library(plotly)
+selected_series %>% 
+  filter(series_name %in% c("Breaking Bad")) %>%
+  plot_ly(x = ~series_ep, y = ~UserRating,
+          color = ~factor(season), size = ~UserVotes,
+          customdata(last_ep_season)
+          )
+```
+```{r}
+selected_series %>%
+      filter(series_name %in% c("Breaking Bad")) %>%
+      ggplot(aes(x = series_ep, y = UserRating, colour=factor(season), size = UserVotes)) +
+      geom_point() +
+      geom_point(data = last_ep_season, aes(x = series_ep, y = UserRating, size = UserVotes), colour = "red") +
+      labs(col = "Temporadas") +
+      xlab("Nº do Episódio") + ylab("Avaliação do Usuário")
+```
+
+
+

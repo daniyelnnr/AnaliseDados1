@@ -1,0 +1,20 @@
+(1) o que são os dados, descrevendo o que é a amostra, e que atributos/variáveis existem para cada observação; 
+
+Os dados são baseados em um estudo controlado do site The Silph Road. Os dados estudados foram os tipos de lançamento de uma Pokébola, os tipos de bônus de cada lançamento de uma Pokébola e a observação da captura ou não.
+
+(2) os meios gráficos e estatísticos usados para descrever e explorar a amostra; 
+
+Os meios gráficos incluem:
+	- gráfico em linha, analisando duas variáveis. 
+	- gráfico em barra, onde há multiplas representações para apresentar um conjunto de resultados.
+
+Os meios estatísticos que explicam a amostra englobam teste de hipóteses e o teste qui-quadrado.
+
+(3) ressalte algum motivo por que você considera que esse é um exemplo de análise bem feita (seja específico e use aqui o vocabulário técnico que você viu na disciplina);
+
+Acho que essa análise é bem feita pois apresenta conceitos simples e que são de fácil entendimento, mesmo apresentando conceitos estatísticos que podem, em tese, dificultar a leitura. Outro ponto positivo envolve os gráficos mostrados, que são interativos e com os dados sendo bem representados - mostrando bem a relação entre as variáveis. Há clareza sobre tudo que foi feito, inclusive certas variáveis controladas durante a análise e algumas correções feitas após a análise.
+
+(4) o que você teria feito de diferente.
+
+Apresentaria uma justificativa ou explicação mais ampla sobre os motivos de utilizar certas variáveis de modo controlado. Isso facilitaria um leitor externo a compreender mais detalhes da análise e evitaria questionamentos sobre os resultados encontrados.
+Na seção que apresenta os resultados em comparação ao teste de hipóteses, seria bom uma introdução sobre o motivo de realizar esse procedimento, pois pode não fazer muito sentido para um leigo.

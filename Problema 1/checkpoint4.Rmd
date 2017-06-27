@@ -1,0 +1,152 @@
+---
+title: "AD1 2017.1, Problema 1 - Checkpoint 4"
+date: 29 de maio de 2017
+author: "Daniyel Rocha"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Inicialmente instalamos e importamos as bibliotecas necessárias para o código ser executado.
+
+```{r, message=FALSE}
+installed.packages(c("dplyr","tidyr","ggplot2","readr"))
+#library("tidyverse")
+library("ggplot2")
+library("dplyr")
+library("tidyr")
+library("readr")
+```
+
+Utilizaremos uma base de dados extraída do site IMDB. Os dados coletados são referentes uma listagem de diversas séries e informações de seus episódios. A explicação das variáveis está [aqui](https://github.com/nazareno/imdb-series).
+
+```{r, message=FALSE}
+series_from_imdb = read_csv("https://raw.githubusercontent.com/nazareno/imdb-series/master/data/series_from_imdb.csv")
+```
+
+#Checkpoint 4
+
+Realizamos duas perguntas sobre nossa base de dados e iremos fazer uma análise exploratória com base nessas questões. Após isso, buscaremos construir novos problemas utilizando as conclusões que foram identificadas no passo anterior.
+
+##Primeira pergunta
+
+- O público geralmente considera o último episódio de uma série finalizada como sendo ruim?
+
+Esse problema envolve selecionar todas as séries da nossa base de dados que já não são mais exibidas. Para isso, realizei uma rápida pesquisa e fiz a filtragem daquelas que vão nos atender para esse quesito.
+
+```{r}
+series_escolhidas = series_from_imdb %>% 
+  filter(series_name %in% c("Breaking Bad", "Dexter","Friends", "How I Met Your Mother", "Prison Break"))
+```
+
+Foram selecionadas as séries encerradas: Breaking Bad, Dexter, Friends, How I Met Your Mother, Prison Break.
+Uma forma de proceder com a nossa análise seria agrupar a lista de todos os episódios das séries selecionadas e então observar a avaliação dos usuários para os último episódio de uma dada série.
+
+```{r}
+series_escolhidas %>%
+  group_by(series_name) %>%
+  top_n(1,series_ep) %>%
+  select(series_name,series_ep,UserRating)
+```
+
+Dessa forma, podemos realizar a comparação entre as séries analisadas e dizer qual delas o público considera ruim. Entretanto, dizer que os últimos episódios de uma série e, consequentemente, seu final é ruim com base somente no último episódio não é algo que representa muito bem uma visão sobre o período final de uma série.
+Uma abordagem que pode nos fornecer uma maior representatividade sobre o final de uma série é escolher um cojunto de episódios, incluíndo o último episódio. Neste caso, iremos utilizar o conjunto dos 10 episódios finais para fazer a análise e observar um panorama geral. Por ainda ser um conjunto pequeno de dados, todas as faixas de valores devem ser consideradas na análise. Dessa forma conseguimos ter uma visão mais ampla dos valores e da distribuição dos mesmos ao longo do tempo.
+
+```{r}
+series_escolhidas_10 = series_escolhidas %>%
+  group_by(series_name) %>%
+  top_n(10,series_ep)
+series_escolhidas_10 %>%
+  ggplot(aes(x=series_ep,y=UserRating,col=series_name)) +
+  geom_line() + geom_point() +
+  facet_wrap(~series_escolhidas_10$series_name,scales = "free_x") +
+  xlab("Nº do Episódio") + ylab("Avaliação do Usuário") +
+  labs(col = "Séries") +
+  theme_minimal()
+```
+
+Para essa visualização, podemos observar que a avaliação do último episódio por si só não tem muita representatividade sobre o final de uma série.  
+
+Algumas séries apresentaram episódios finais cuja avaliação variou muito na sua parte final, como por exemplo Breaking Bad, How I Met Your Mother e Dexter. Entretanto, entre essas três, notamos que o padrão de variação de cada uma foi distinto em relação a outra. Em Breaking Bad, podemos constatar que sua variabilidade acontece em uma faixa de valores distinta, entre 9 e 10, e isso indica que para o público seu final foi muito bom. Entretanto, verificamos que, tanto com How I Met Your Mother quanto Dexter, a inconstância foi maior e numa faixa de valores maior. Os dados das avaliaçãoes dessas duas séries nos indicam que o final foi decepcionante para Dexter, com alguns poucos episódios que parecem ter criado alguma ao telespectador, e How I Met Your Mother estava com boas avaliações, mas os últimos foram ruins e o último episódio acabou frustrando a todos. A observação anterior nos mostra que algo parece ter acontecido e decepcionado o público, visto que somente os dois últimos destoam da sequência final.  
+Já Friends e Prision Break tiveram pouca variação na qualidade de seus episódios - apresentaram uma sequência de episódios com qualidade crescente, apesar de Prision Break mostrar alguma variação.
+
+###Questionamentos
+
+Pensando sobre esse conjunto de episódios finais podemos extrair alguns questionamentos. Se ampliarmos essa visão e observar um grupo cada vez maior de episódios, podemos nos perguntar se o final de uma série sempre irá refletir a construção de qualidade que ela teve durante todos os seus episódios. Esse problema pode remeter a regularidade de uma série, pois quanto mais regular uma série, mais fácil se torna perceber a construção e o padrão de qualidade que ela apresenta. Para analisar a regularidade das séries, podemos utilizar a variância.
+
+```{r}
+series_escolhidas %>%
+  group_by(series_name) %>%
+  summarise(variance = var(UserRating))
+```
+
+Agrupando cada série e obtendo a variância de cada, podemos tentar entender quão distantes os valores das avaliações estão da média de cada uma das séries. Estamos utilizando a média como medida de centralidade pois valores *outliers* exercem influência na nossa análise, e estes irão nos mostrar melhor as irregularidades, fazendo então com que a média em conjunto com a variância seja uma abordagem adequada para este caso. Para um melhor entendimento, quando é dito que a média tem ligação com a variância, é simplesmente porque para o cálculo da variância é preciso utilizar a média aritmética.  
+
+Para este caso, vemos que há certa diferença dos valores observados. Isso pode ser interpretado de forma que as séries com um valor de variância menor são mais regulares, uma vez que seus dados (episódios) estão menos distantes da média, que é a nossa medida de centralidade, nosso valor central. Por exemplo, se observamos a representação gráfica dos episódios finais de cada uma das séries, vemos que justamente as séries que apresentam dados menos centralizados são as que apresentam maior discrepância nas avaliações finais dos seus episódios (How I Met Your Mother e Dexter). Essa observação pode ser suficiente para fazer com que o valor da variância de cada uma seja afetado.  
+É importante dizer que isso não nos diz nada sobre a qualidade da série, se é boa ou ruim, mas pode nos falar algo sobre a sua construção ao longo de todos os seus episódios, já que eles podem estar mais próximos de um valor central.
+
+###Conclusão
+
+Assim, podemos afirmar que as avaliações finais dessas séries formam um conjunto de dados que representam melhor a maneira como uma determinada série se encerrou, em comparação a observação única do episódio final.  Respondendo a pergunta inicial, não acho que é correto pensar sobre esse questionamento de forma binária, uma vez que um episódio final é pouco representativo para nos fornecer uma resposta. Assim, podemos concluir que essa análise nos mostra que um capítulo final ruim não acontece do nada - há uma construção ao longo dos episódios, onde o apíce é o episódio derradeiro e não é necessáriamente bom ou ruim, e tal formação pode influênciar diretamente a expectativa do público.
+
+##Segunda pergunta
+
+- As melhores séries são as que possuem mais avaliações?
+
+Podemos utilizar o mesmo conjunto de dados referentes as séries já finalizadas para realizar uma análise e buscar uma resposta para esse questionamento. Uma possibilidade para realizar a análise é obter quais séries possuem maior quantidade de avaliações e então comparar os resultados com as informações da qualidade de cada uma.
+Agrupando cada série de acordo com a soma da quantidade de avaliações que possui, podemos obter a quantidade de votos que uma série possui.
+
+```{r}
+series_escolhidas %>%
+  group_by(series_name) %>%
+  arrange(series_name) %>%
+  summarise(TotalVotes = sum(UserVotes)) 
+```
+
+Isso nos mostra que algumas séries possuem uma quantidade muito maior de avaliações do que outras, só que isso não responde nossa pergunta. Para dar continuidade ao pensamento é preciso analisar que uma questão de grande importância é sobre a forma que iremos utilizar para dizer que uma série é melhor do que a outra.  
+Sobre isso, podemos relembrar de atividades e conceitos passados, o que nos remete a utilização da mediana como medida de centralidade de um conjunto de dados. Ela é uma medida que irá mostrar o valor que está exatamente no meio de um conjunto de dados, após realizarmos a ordenação dos mesmos - e isso vai nos mostrar uma medida que irá representar os dados com duas metades. Outra vantagem dela em comparação a outras medidas de centralidade, como a média, é que ela é menos afetada por valores *outliers*, ou seja, valores que estão muito mais dispersos do valor central do que o normal. Assim, utilizaremos a mediana para comparar a qualidade das séries. Utilizaremos a visualização com pontos também, para que facilite a compreensão da distribuição dos dados e a observação dos valores mais dispersos.
+
+```{r}
+#primeiro calculamos o valor da mediana para cada série, utilizando as avaliações dos usuários
+median = series_escolhidas %>%
+  group_by(series_name) %>%
+  arrange(series_name) %>%
+  summarise(median = median(UserRating)) 
+
+series_escolhidas %>%
+  ggplot(aes(x = series_name, y = UserRating, col = series_name)) +
+    geom_boxplot() +
+    geom_point() +
+    geom_jitter(width = 0.25, alpha = 0.5) +
+    geom_text(data = median, aes(label = median, y = median + 0.08), size=4, vjust=-0.1,color="black") +
+    xlab("Séries Analisadas") + ylab("Avaliação dos Usuários") + labs(fill = "Séries") +
+    theme_minimal()
+```
+
+Observamos que a barra na horizontal representa os valores das medianas, mostrados na representação gráfica. E isso responde nossa pergunta parcialmente: vemos que Breaking Bad pode ser dita como a melhor série, pois tem a maior mediana, e também apresenta a maior quantidade de avaliações. Entretanto, essa forma de raciocínio se distancia do que acontece com as outras séries. Podemos citar Prision Break, a qual podemos nos relembrar que é uma série com poucas avaliações e mesmo assim ela é apresenta boa qualidade, quando utilizamos o critério da mediana.  
+Dessa forma vemos que uma série não necessáriamente é melhor do que outra série por apresentar mais avaliações.
+
+###Questionamentos
+
+No contexto visto acima sobre a quantidade de avaliações como forma de comparação entre séries, podemos nos perguntar algumas coisas. Por exemplo, uma reflexão que pode ocorrer é saber se o fato de algumas séries possuirem muito mais temporadas do que outras pode influenciar na quantidade de avaliações que a uma série vai possuir.  
+Para verificar essa pergunta e representar melhor os nossos dados com relação aquilo que procuramos responder, podemos mostrar uma tabela que nos possibilita observar a quantidade de temporadas e de episódios das séries analisadas.
+
+```{r}
+series_escolhidas %>%
+  group_by(series_name) %>%
+  arrange(series_name) %>%
+  top_n(1,series_ep) %>%
+  select(series_name,season,series_ep)
+```
+
+Dessa forma, no contexto citado, temos uma visão mais ampla ao observar as três variáveis: total de votos, quantidade de temporadas e quantidade de episódios. Vemos que uma série pode ter menos temporadas do que outra, mas apresentar mais episódios - é o caso de Breaking Bad e Prision Break. E relacionando esse exemplo com a quantidade total de votos desses dois conjuntos de dados, vemos que Breaking Bad tem quase cinco vezes mais avaliações. Ou seja, não há uma relação clara entre o total de votos e a quantidade de episódios que uma série tem. Essa observação destoa do restante dos dados, onde o esse padrão do questionamento é mais fácil de ser percebido.
+
+###Conclusão
+
+Podemos concluir que essa pergunta é difícil de ser respondida, e a utilização de uma linha de raciocínio pode responder a pergunta para um caso, mas quando ampliamos esse pensamento ele acaba não sendo muito preciso. Seria muito superficial afirmar que sim, uma série por possuir mais avaliações é melhor do que a outra. Ocorreram exemplos onde a série possuia poucas avaliações e poucos episódios e nem por isso ela era uma série apresentava uma qualidade ruim, no nosso raciocínio.  
+Temos que ter em mente que para esse caso a resposta não pode ser única e demanda uma interpretação do todo para que analisando os dados, diversas conclusões podem ser extraídas.

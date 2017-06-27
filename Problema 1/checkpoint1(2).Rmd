@@ -1,0 +1,172 @@
+---
+title: "AD1 2017.1, Problema 1 - Checkpoint 1"
+date: 22 de maio de 2017
+author: "Daniyel Rocha"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+Inicialmente instalamos e importamos as bibliotecas necessárias para o código ser executado.
+
+```{r, message=FALSE}
+installed.packages(c("dplyr","tidyr","ggplot2","readr"))
+#library("tidyverse")
+library("ggplot2")
+library("dplyr")
+library("tidyr")
+library("readr")
+```
+
+Realizamos a leitura dos nossos dados das avaliações das séries. O conjunto de dados utilizados na análise são referentes a episódios de séries listadas no site IMDB. A explicação das variáveis está [aqui](https://github.com/nazareno/imdb-series).
+
+```{r, message=FALSE}
+series_from_imdb = read_csv("https://raw.githubusercontent.com/nazareno/imdb-series/master/data/series_from_imdb.csv")
+```
+
+Entre todas as séries, devemos escolher apenas algumas desse conjunto de dados. Decidimos escolher: Breaking Bad, Black Mirror, House of Cards e How I Met Your Mother. Para isso, é feita uma filtragem dos dados com base no título de todas as séries e selecionando apenas as que serão utilizadas para a análise.
+
+```{r}
+series_escolhidas = series_from_imdb %>% 
+  filter(series_name %in% c("Breaking Bad", "Black Mirror","House of Cards", "How I Met Your Mother"))
+```
+
+#Primeira pergunta
+
+Queremos responder **qual das séries escolhidas é a mais bem avaliada no IMDB**.
+
+###Média como instrumento de comparação
+
+Uma das abordagens possíveis é fazer o agrupamento das séries pelo título e utilizar a **média** de cada série para realizar a comparação de cada uma e definir qual é a mais bem avaliada.
+
+```{r}
+series_por_media =
+  series_escolhidas %>%
+  group_by(series_name) %>%
+    summarise(UserRating = mean(UserRating)) %>%
+    arrange(desc(UserRating))
+series_por_media
+```
+
+Para melhorar a visualização dos dados, uma opção é gerar um gráfico em barras.
+
+```{r}
+series_por_media %>%
+  ggplot(aes(x = reorder(series_name, UserRating), y = UserRating, fill = series_name)) +
+    geom_col(width = 0.7) + 
+    scale_y_continuous(breaks=seq(0, 10, 1)) +
+    xlab("Séries Analisadas") + ylab("Avaliação dos Usuários") +
+    coord_flip() + labs(fill = "Séries")
+```
+
+Ao analisarmos esse gráfico, poderiamos comparar as séries utilizando a média como critério e facilmente perceber qual é a mais bem avaliada em relação as outras - bem como perceber que a diferença entre elas é pequena. No entanto, a média não é representa bem esse conjunto de dados. Isso acontece por conta da média ser muito suscetível a valores *outliers*. Por exemplo, para o caso de uma série com poucos episódios uma avaliação ruim pode ter forte influência para diminuir o valor da média, mesmo que os outros episódios geralmente sejam bem avaliados.
+
+Se visualizarmos esses dados individualmente, temos:
+
+```{r}
+series_escolhidas %>%
+  ggplot(aes(x = series_name, y = UserRating, col = series_name)) +
+    geom_point() +
+    geom_jitter() + 
+    xlab("Séries Analisadas") + ylab("Avaliação dos Usuários") + labs(fill = "Séries")
+```
+
+Observando o gráfico, vemos que ao analisarmos os dados individualmente verificamos alguns *outliers* que podem interferir na representividade da média. Neste caso, para a série Black Mirror, notas mais descentralizadas vão exercer muita influência na média, visto que esta não possui uma grande quantidade de episódios. Isso reforça que a média não é uma medida adequada para definir qual série é mais bem avaliada e não considero adequado julgar uma série como sendo mais bem avaliada do que outra quando temos uma medida que não representa bem a realidade.
+
+###Mediana como instrumento de comparação
+
+Uma abordagem para responder a pergunta poderia ser com base na utilização da **mediana**. Para isso podemos reutilizar o gráfico anterior e utilizar um boxplot na plotagem.
+
+```{r}
+series_escolhidas %>%
+  ggplot(aes(x = series_name, y = UserRating, col = series_name)) +
+    geom_boxplot() +
+    geom_point() +
+    geom_jitter() + 
+    xlab("Séries Analisadas") + ylab("Avaliação dos Usuários") + labs(fill = "Séries")
+```
+
+Com essa representação, podemos agrupar os dados em duas metades e separar a metade maior e a metade menor de cada amostra por meio da mediana. Neste caso, as medianas são as linhas horizontais que estão sendo representadas dentro de cada um dos paralelogramos da plotagem. Dessa forma os dados ficam com uma distribuição mais igualitária, *o que pode facilitar uma comparação*, já que a mediana vai refletir um valor mais central da amostra de cada série e é pouco afetada por valores discrepantes ou *outliers*.  
+A mediana pode sintetizar uma melhor condição de avaliação pois considera um valor centralizado e não considera as concentrçãoes excessivas de frequência, que é o caso negativo que acontece da **moda**. Outro problema com a moda é que ela não nos fornece uma medida muito boa quando o valor mais frequente está longe do resto dos dados no conjunto de dados. Consideramos também que ela não faz como a média, a qual pode verifica-se uma concentração em dados individualizados e estes podem tendenciar a avaliação. Então optamos pela mediana como instrumento para realizar a comparação e responder a nossa pergunta.
+
+Agrupando as séries de acordo com a mediana e realizando a plotagem dos dados, temos:
+
+```{r}
+series_por_mediana =
+  series_escolhidas %>%
+  group_by(series_name) %>%
+    summarise(UserRating = median(UserRating)) %>%
+    arrange(desc(UserRating))
+series_por_mediana %>%
+  ggplot(aes(x = reorder(series_name, UserRating), y = UserRating, fill = series_name)) +
+    geom_col(width = 0.7) +
+    scale_y_continuous(breaks=seq(0, 10, 1)) +
+    xlab("Séries Analisadas") + ylab("Avaliação dos Usuários") +
+    coord_flip() + labs(fill = "Séries")
+```
+
+##Conclusão
+
+Podemos responder que a série mais bem avaliada no IMDB, entre as séries escolhidas para a análise, é Breaking Bad. Observamos também que a diferença entre as séries foi muito pequena. Todas as séries analisadas apresentaram uma nota de avaliação que está entre 8 e 9, isso de acordo com nossa forma de análise.
+
+#Segunda pergunta
+
+Queremos responder **qual das séries escolhidas tem episódios de qualidade mais irregular segundo o IMDB**.
+
+###Gráfico de linhas x gráfico de barras
+
+Para realizar a análise e responder a pergunta, acho que a melhor abordagem é agrupar cada uma das séries escolhidas e analisar a avaliação de cada episódio. Dessa forma podemos visualizar de forma simples, para cada série, a alteração nos dados ao longo da duração de cada uma - e isso pode nos mostrar quão irregular uma série é. No entanto, isso pode ser feito de diversas formas. Para exemplificar, inicialmente escolhemos os plots em barra e em linha, onde cada um vai estar agrupado para facilitar a visualização.
+
+```{r}
+series_escolhidas %>%
+  ggplot(aes(x=series_ep,y=UserRating,col=series_name)) +
+  geom_line() +
+  facet_wrap(~series_escolhidas$series_name) +
+  labs(col = "Séries") +
+  xlab("Nº do Episódio") + ylab("Avaliação do Usuário") +
+  theme_minimal()
+
+series_escolhidas %>%
+  ggplot(aes(x=series_ep,y=UserRating,col=series_name)) +
+  geom_bar(stat = "identity", position=position_stack()) +
+  xlab("Nº do Episódio") + ylab("Avaliação do Usuário") +
+  labs(col = "Séries") +
+  facet_wrap(~series_escolhidas$series_name) 
+```
+
+Os dois gráficos obervados mostram a variação ao longo dos episódios de uma série, o que se torna algo relevante quando queremos analisar irregularidades ao longo do tempo. Mas para essas representações temos um problema: algumas séries tem muito menos episódios do que outras. Uma ideia é modificar a escala, de forma que ela represente melhor os nossos dados. Mas é preciso indicar que essa alteração pode gerar interpretações errôneas. Como queremos apenas observar a variação para cada uma das séries, creio que isso não terá um impacto negativo. Fazendo o gráfico:
+
+```{r}
+series_escolhidas %>%
+  ggplot(aes(x=series_ep,y=UserRating,col=series_name)) +
+  geom_line() +
+  facet_wrap(~series_escolhidas$series_name,scales = "free_x") +
+  xlab("Nº do Episódio") + ylab("Avaliação do Usuário") +
+  labs(col = "Séries") +
+  theme_minimal()
+
+series_escolhidas %>%
+  ggplot(aes(x=series_ep,y=UserRating,col=series_name)) +
+  geom_bar(stat = "identity", position=position_stack()) +
+  xlab("Nº do Episódio") + ylab("Avaliação do Usuário") +
+  labs(col = "Séries") +
+  facet_wrap(~series_escolhidas$series_name,scales = "free_x") 
+```
+
+Como desejamos observar a variação dos dados, um gráfico em linhas acaba se tornando de uma leitura mais fácil. Isso devido ao fato da utilização das barras ser algo que preenche o espaço do conjunto de dados praticamente inteiro, poluindo visualmente e não sobrando espaço para uma boa visualização da variação dos dados de avaliação dos episódios.  Por isso acho ser melhor utilizar somente o gráfico em linhas, que fornece maior clareza na leitura. Podemos ainda utilizar uma linha que passa pela menor distância entre os dados observados e pode ser um recurso visual para ajudar na interpretação da variação.
+
+```{r}
+series_escolhidas %>%
+  ggplot(aes(x=series_ep,y=UserRating,col=series_name)) +
+  geom_line() +
+  facet_wrap(~series_escolhidas$series_name,scales = "free_x") +
+  geom_smooth(method = "auto") +
+  xlab("Nº do Episódio") + ylab("Avaliação do Usuário") +
+  labs(col = "Séries") +
+  theme_minimal()
+```
+
+##Conclusão
+
+Dessa forma observamos que dentre as séries analisadas, a série que apresenta um conjunto de dados que é mais irregular e tem dados mais descentralizados é How I Met Your Mother, de acordo com nossa análise. Em geral, todas as séries apresentam episódios com avaliações que estão centralizadas e de pouca variação. O que pesou para a série mais irregular foi a parte final dos seus episódios, onde a variação foi muito alta e mostrando quão irregular ela foi em seu período final.

@@ -1,0 +1,56 @@
+---
+title: "highchart_test"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library("highcharter", warn.conflicts = F)
+library("magrittr")
+library("tidyverse")
+library("dplyr", warn.conflicts = F)
+library("tidyr")
+library("readr")
+library("ggplot2")
+series_from_imdb <- read_csv("https://raw.githubusercontent.com/nazareno/imdb-series/master/data/series_from_imdb.csv")
+```
+
+```{r}
+selected_series <- series_from_imdb %>% 
+  filter(series_name %in% c("Breaking Bad", "Dexter", "Friends", "How I Met Your Mother", "Black Mirror",
+                            "House of Cards", "Dexter", "Sense8", "Daredevil", "Homeland",
+                            "Orphan Black", "Game of Thrones"))
+```
+
+```{r}
+highchart() %>% 
+  hc_title(text = "Scatter chart with size and color") %>% 
+  hc_add_series_scatter(mtcars$wt, mtcars$mpg, mtcars$drat, mtcars$hp)
+```
+
+
+```{r}
+x <- c("Título","Avaliação", "Nº Episódio na Temporada", "Nº de Votos", "r10")
+y <- sprintf("{point.%s}", c("Episode", "UserRating", "season_ep", "UserVotes", "r10"))
+tooltip <- tooltip_table(x, y)
+
+last_ep_season <- selected_series %>%
+  filter(series_name %in% c("Breaking Bad")) %>%
+  group_by(series_name, season) %>%
+  slice(which.max(season_ep))
+
+plot_series <- selected_series %>%
+  filter(series_name %in% c("Breaking Bad")) %>%
+  hchart("scatter", hcaes(x = series_ep, y = UserRating, group = season, size = UserVotes)) %>%
+  hc_title(text = "Avaliações por temporada") %>%
+  hc_subtitle(text = "Tamanho indica votos do episódio") %>%
+  #hc_add_series_scatter(last_ep_season, series_ep, UserRating, color = "red") %>%
+  hc_tooltip(useHTML = TRUE, headerFormat = "", pointFormat = tooltip)
+plot_series
+
+```
+
+

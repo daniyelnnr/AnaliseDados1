@@ -1,0 +1,218 @@
+---
+title: "Prob 3, CP1"
+author: "Daniyel"
+date: "20 de junho de 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Importando as bibliotecas necessárias.
+```{r}
+library(tidyverse, warn.conflicts = F)
+library(rvest)
+library(plotly)
+library(cluster)
+library(ggdendro)
+source("https://raw.githubusercontent.com/nazareno/ciencia-de-dados-1/master/3-Agrupamento-e-PCA/plota_solucoes_hclust.R")
+theme_set(theme_light())
+```
+
+Inicialmente iremos coletar os dados brutos de Steve Carell no site Rotten Tomatoes para a análise.
+
+```{r}
+from_page <- read_html("https://www.rottentomatoes.com/celebrity/steve_carell") %>% 
+    html_node("#filmographyTbl") %>% # A sintaxe da expressão é de um seletor à lá JQuery: https://rdrr.io/cran/rvest/man/html_nodes.html 
+    html_table(fill=TRUE) %>% # Faz parse
+    as.tibble()
+```
+
+Precisamos filtrar dados e variáveis dessa tabela para que fiquem mais organizados e o trabalho seja facilitado.
+
+```{r}
+filmes <- from_page %>%
+  filter(RATING != "No Score Yet") %>%
+  mutate(RATING = as.numeric(gsub("%", "", RATING)),
+         `BOX OFFICE` = as.numeric(gsub("[$|M]", "", `BOX OFFICE`)),
+         CREDIT = as.character(gsub("Screenwriter|Executive|Producer", "", CREDIT))) %>%
+  na.omit()
+
+names(filmes)
+```
+
+Nossas variáveis sobre os filmes de Steve Carell são:
+*RATING: Percentual de avaliação no Rotten Tomatoes
+*TITLE: Título do filme
+*CREDIT: Personagem no filme
+*BOX OFFICE: Ganhos de bilheteria
+*YEAR: Ano de lançamento
+
+Fazendo uma breve EXPLORAÇÃO DOS NOSSOS DADOS, podemos observar:
+
+```{r}
+# filmes %>%
+#   ggplot(aes(x = TITLE, y = RATING, size = `BOX OFFICE`)) +
+#   geom_point()
+
+filmes %>%
+  plot_ly(x = ~TITLE, y = ~RATING,  size = ~`BOX OFFICE`, type = 'scatter', mode = 'markers')
+```
+
+EXPLORAÇÃO DOS DADOS
+
+
+AGRUPAMENTO
+
+```{r}
+filmes %>% 
+    ggplot(aes(x = "Filmes", y = RATING)) + 
+    geom_jitter(width = .01, height = 0, size = 2, alpha = .6)
+
+#nao precisa criar visualização de log pra RATING pq só vai de 0 a 100
+
+# filmes %>% 
+#     ggplot(aes(x = "Filmes", y = YEAR)) + 
+#     geom_jitter(width = .02, height = 0, size = 2, alpha = .6) 
+
+filmes %>% 
+    ggplot(aes(x = "Filmes", y = `BOX OFFICE`)) + 
+    geom_jitter(width = .02, height = 0, size = 2, alpha = .6)
+
+filmes %>% 
+    ggplot(aes(x = "Filmes", y = `BOX OFFICE`)) + 
+    geom_jitter(width = .02, height = 0, size = 2, alpha = .6) + 
+    scale_y_log10()
+```
+
+```{r}
+row.names(filmes) = NULL
+agrupamento_h <- filmes %>% 
+    column_to_rownames("TITLE") %>% # hclust precisa dos rótulos em nomes de linha (ruim)
+    select(RATING) %>%
+    dist(method = "euclidian") %>% 
+    hclust(method = "ward.D")
+
+ggdendrogram(agrupamento_h, rotate = T, size = 2)
+
+ggdendrogram(agrupamento_h, rotate = T, size = 2) + 
+    geom_hline(yintercept = 44, colour = "red")
+```
+
+```{r}
+data.frame(k = 1:NROW(agrupamento_h$height), 
+           height = agrupamento_h$height) %>% 
+    ggplot(aes(x = k, y = height)) + 
+    geom_line(colour = "grey") + 
+    geom_point() + 
+    geom_text(aes(label=k),hjust=0.5, vjust=-0.5) +
+    labs(x = "Junções feitas", y = "Dissimilaridade na junção")
+```
+```{r}
+tibble(a = c(rnorm(100, mean = 10, sd = 10), 
+             rnorm(40, mean = 80, sd = 15))) %>% 
+    ggplot(aes(x = "teste", y = a)) + 
+    geom_jitter(width = .02, height = 0, size = 2, alpha = .6) 
+```
+
+```{r}
+solucoes <- tibble(k = 1:9)
+
+atribuicoes <- solucoes %>% 
+    group_by(k) %>% 
+    do(cbind(filmes, 
+             grupo = as.character(cutree(agrupamento_h, .$k)))) 
+
+atribuicoes %>% 
+    ggplot(aes(x = "Filmes", y = RATING, colour = grupo)) + 
+    geom_jitter(width = .02, height = 0, size = 2, alpha = .6) + 
+    facet_wrap(~ paste(k, " grupos"))
+```
+LINKAGE
+```{r}
+plota_hclusts_1d(filmes, "`BOX OFFICE`", linkage_method = "centroid", ks = 1:6)
+
+filmes %>% mutate(`BOX OFFICE` = log(`BOX OFFICE`)) %>% 
+    plota_hclusts_1d("`BOX OFFICE`", linkage_method = "centroid", ks = 1:6) + 
+    scale_y_log10()
+```
+
+```{r}
+distancias = filmes %>% 
+    select(RATING) %>%
+    dist(method = "euclidean")
+
+agrupamento_hs = filmes %>% 
+    column_to_rownames("TITLE") %>%
+    select(RATING) %>%
+    dist(method = "euclidean") %>% 
+    hclust(method = "complete")
+
+
+plot(silhouette(cutree(agrupamento_hs, k = 4), distancias))
+plot(silhouette(cutree(agrupamento_hs, k = 3), distancias))
+plot(silhouette(cutree(agrupamento_hs, k = 2), distancias))
+```
+
+```{r}
+p <- filmes %>% 
+    ggplot(aes(x = RATING, y = `BOX OFFICE`, label = TITLE)) + 
+    geom_point() 
+p
+```
+
+```{r}
+agrupamento_h_2d = filmes %>% 
+    column_to_rownames("TITLE") %>%
+    select(RATING, `BOX OFFICE`) %>%
+    dist(method = "euclidean") %>% 
+    hclust(method = "centroid")
+
+ggdendrogram(agrupamento_h_2d, rotate = TRUE)
+
+data.frame(k = NROW(agrupamento_h_2d$height):1, 
+           height = agrupamento_h_2d$height) %>% 
+    ggplot(aes(x = k, y = height)) + 
+    geom_line(colour = "grey") + 
+    geom_point() + 
+    labs(x = "Número de clusters produzido", y = "Dissimilaridade na junção")
+
+```
+
+```{r}
+plota_hclusts_2d(agrupamento_h_2d, 
+                 filmes, 
+                 c("RATING", "`BOX OFFICE`"), 
+                 linkage_method = "centroid", ks = 1:6)
+```
+
+```{r}
+agrupamento_h_2d <- filmes %>% 
+    column_to_rownames("TITLE") %>%
+    select(RATING, `BOX OFFICE`) %>% 
+    mutate(`BOX OFFICE` = log10(`BOX OFFICE`)) %>% 
+    mutate_all(funs(scale)) %>% 
+    dist(method = "euclidean") %>% 
+    hclust(method = "centroid")
+
+ggdendrogram(agrupamento_h_2d, rotate = TRUE)
+
+filmes2 = filmes %>% mutate(`BOX OFFICE` = log10(`BOX OFFICE`))
+plota_hclusts_2d(agrupamento_h_2d, 
+                 filmes2, 
+                 c("RATING", "`BOX OFFICE`"), 
+                 linkage_method = "ward.D", ks = 1:6) + scale_y_log10()
+```
+
+```{r}
+distancias <- filmes %>% 
+    column_to_rownames("TITLE") %>%
+    select(RATING, `BOX OFFICE`) %>% 
+    mutate(`BOX OFFICE` = log10(`BOX OFFICE`)) %>% 
+    mutate_all(funs(scale)) %>% 
+    dist(method = "euclidean")
+
+plot(silhouette(cutree(agrupamento_h_2d, k = 4), distancias))
+```
+

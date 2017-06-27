@@ -1,0 +1,22 @@
+post de blog
+
+agrupamento hierarquico
+
+explorar os dados antes de utilizá-los OK
+descrição das variáveis OK
+documentar decisões sobre filtrar dados ou variáveis OK
+
+STEVE CARELL OK
+
+analisar os tipos de filme (grupamentos) utilizando:
+ - sucesso de público (bilheteria)
+ - sucesso de crítica (avaliações no rotten)
+obs -> PODE SER 2X DE 1D OU 1X DE 2D
+
+com os dados: 
+ - experimentar as diversas formas de agrupamento (transformações das variáveis, escolha de grupos e algoritmos de linkage)
+ - escolher a MELHOR COMBINAÇÃO e escrever um pouco INTERPRETANDO OS RESULTADOS
+
+para cada grupo da combinação final:
+ - qual o nome e o porque
+ - exemplos de filmes do grupo que se encaixam no nome do grupo

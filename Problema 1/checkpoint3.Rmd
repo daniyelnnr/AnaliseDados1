@@ -1,0 +1,34 @@
+---
+title: "checkpoint3"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+installed.packages(c("dplyr","tidyr","ggplot2","readr"))
+#library("tidyverse")
+library("ggplot2")
+library("dplyr")
+library("tidyr")
+library("readr")
+series_from_imdb = read_csv("https://raw.githubusercontent.com/nazareno/imdb-series/master/data/series_from_imdb.csv")
+```
+
+```{r}
+serie_analisada = series_from_imdb %>%
+  filter(series_name %in% c("Vikings")) %>%
+  ggplot(aes(x=series_ep,y=UserRating,col=series_name)) +
+  geom_line()+
+  geom_point()
+serie_analisada
+```
+
+Será que a audiência geralmente considera o(s) último(s) episódios de uma série finalizada como sendo ruins?
+Uma série é mais bem avaliada nos seus episódios/temporadas iniciais ou não?
+O episódio seguinte ao(s) mais bem avaliado(s) de uma série geralmente é muito pior do que o anterior?
+As melhores séries são as que possuem mais avaliações?
+Séries longas, com mais de 5 temporadas, tendem a ficar mais desinteressantes?
+Os últimos episódios de cada temporada são os mais bem avaliados de cada série?
