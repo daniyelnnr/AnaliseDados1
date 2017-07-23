@@ -10,12 +10,24 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-#analisar contratação de professores, qual UA tem mais visitantes, substitutos (DESCRICAO CARGO) etc, ou qual unidade tem mais funções gratificadas
-library(tidyverse)
+require(GGally, quietly = TRUE)
+require(reshape2, quietly = TRUE)
+require(tidyverse, quietly = TRUE, warn.conflicts = FALSE)
+library(GGally)
+library(ggfortify, warn.conflicts = F)
+library(cluster, warn.conflicts = F)
+library(ggdendro, warn.conflicts = F)
+library(broom, warn.conflicts = F)
+library(dplyr, warn.conflicts = F)
+```
+
+
+```{r}
+
 ua_filtradas <- read.csv('https://raw.githubusercontent.com/nazareno/tamanhos-da-ufcg/master/ufcg-201704-unidades-academicas-filtradas.csv', encoding = "UTF-8")
 ua_tudo <- read.csv('https://raw.githubusercontent.com/nazareno/tamanhos-da-ufcg/master/ufcg-201704-tudo.csv', encoding = "UTF-8")
-ua_sumario <- read.csv('https://raw.githubusercontent.com/nazareno/tamanhos-da-ufcg/master/ufcg-201704-sumario-UAs-wide.csv', encoding = "UTF-8")
-matriculas_por_ua <- read.csv('https://raw.githubusercontent.com/nazareno/tamanhos-da-ufcg/master/16-2_matriculas_por_unidade.csv', encoding = "UTF-8")
+ua_sumario <- read.csv('https://raw.githubusercontent.com/nazareno/tamanhos-da-ufcg/master/ufcg-201704-sumario-UAs-wide.csv', encoding = "UTF-8", stringsAsFactors = TRUE)
+matriculas_por_ua <- read.csv('https://raw.githubusercontent.com/nazareno/tamanhos-da-ufcg/master/16-2_matriculas_por_unidade.csv', encoding = "UTF-8", stringsAsFactors = TRUE)
 ```
 
 UNIDADE ACADEMICA (GRUPO) QUE TEM MUITOS PROFESSORES SUBSTITUTO/TEMPORARIOS QUE DAO AULAS PRA MUITOS ALUNOS, E NAO NECESSARIAMENTE TEM MUITOS ALUNOS MATRICULADOS NESSA UA
@@ -25,15 +37,14 @@ Filtrar quem está em unidade academica
 
 ```{r}
 merged <- merge(ua_sumario, matriculas_por_ua, by.x=c("UORG_LOTACAO"), by.y=c("NOME_FEDERAL"))
-
-# ua_sumario %>%
-#   inner_join(matriculas_por_ua, by = c("UORG_LOTACAO" = "NOME_FEDERAL"))
-
-# ua_sumario %>% 
-#   inner_join(matriculas_por_ua, by = c("UORG_LOTACAO" = "NOME_FEDERAL")) %>%
+# ds <- merged %>% 
+#   # group_by(UORG_LOTACAO) %>%
+#   # slice(1L) %>%
 #   mutate(duplicata = duplicated(UORG_LOTACAO)) %>% 
-#   select(DESCRICAO, UORG_LOTACAO, duplicata, CAMPUS) %>% 
-#   View()
+#   mutate(Total_Funcionarios = sum(Outro,Professor.20h,Professor.40h.ou.DE),
+#          perc_Prof40_UA = sum(Professor.40h.ou.DE)/Total_Funcionarios) %>%
+#   mutate_each(funs(round(.,2)), perc_Prof40_UA) #%>%
+#   #select(UORG_LOTACAO, idade_mediana, MATRICULAS, Total_Funcionarios, perc_Prof40_UA)
 
 dados_selecionados <- ua_sumario %>% 
   inner_join(matriculas_por_ua, by = c("UORG_LOTACAO" = "NOME_FEDERAL")) %>%
@@ -43,11 +54,138 @@ dados_selecionados <- ua_sumario %>%
          perc_Prof40_UA = sum(Professor.40h.ou.DE)/Total_Funcionarios) %>%
   mutate_each(funs(round(.,2)), perc_Prof40_UA) %>%
   select(idade_mediana, MATRICULAS, Total_Funcionarios, perc_Prof40_UA)
-dados_selecionados
 
+#dados_selecionados
 ```
 
 REMOVER UA QUE APRESENTAM DUPLICATAS OK
 
 TOTAL DE FUNCIONARIOS, PERCENTUAL DE PROFESSORES, ALGUMA SOBRE IDADE E TOTAL DE MATRICULAS POR UNIDADE ACADEMICA
+
+```{r}
+dados_selecionados %>%
+  ungroup() %>%
+  select(-UORG_LOTACAO) %>%
+  ggpairs()
+
+#filtragem dos dados
+dados_selecionados <- dados_selecionados %>%
+  filter(MATRICULAS < 6000, Total_Funcionarios < 100, perc_Prof40_UA > 0.5)
+
+dados_selecionados %>%
+  ungroup() %>%
+  select(-UORG_LOTACAO) %>%
+  ggpairs()
+```
+
+```{r}
+#escala de log
+ds_log <- dados_selecionados %>% 
+  mutate_each(funs(log), 1:4)
+
+ds_log %>%
+  ungroup() %>%
+  select(-UORG_LOTACAO) %>%
+  ggpairs()
+
+# scale_data <- function(x){
+#   (x - mean(x))/sd(x)
+# }
+# 
+# # ds_log.scaled <- 
+#   dados_selecionados %>%
+#   # mutate(idade_mediana = scale(idade_mediana))
+#   #group_by(UORG_LOTACAO) %>%
+#   mutate_at(.cols = vars(idade_mediana,MATRICULAS, Total_Funcionarios,perc_Prof40_UA),
+#             .funs = funs(scale_data(.)))
+#     
+# summary(ds_log.scaled)
+# scale(dados_selecionados$MATRICULAS)
+# scale_data(dados_selecionados$MATRICULAS)
+# variance(dados_selecionados$MATRICULAS)
+# (dados_selecionados$MATRICULAS - mean(dados_selecionados$MATRICULAS))/sd(dados_selecionados$MATRICULAS)
+# 
+# ds_log.scaled %>%
+#   ungroup() %>%
+#   select(-UORG_LOTACAO) %>%
+#   ggpairs()
+```
+
+```{r}
+dists = ds_log %>% 
+    column_to_rownames("UORG_LOTACAO") %>% 
+    dist(method = "euclidean")
+hc <- hclust(dists, method = "ward.D")
+plot(hc, cex = .5)
+```
+
+Testaremos se 4 agrupamentos funcionam bem, entao nesse momento k = 4 (que é o numero de clusters).
+
+```{r}
+n_clusters <- 4
+#rect.hclust(hc, k=n_clusters)
+dists = ds_log %>% 
+    column_to_rownames("UORG_LOTACAO") %>% 
+    dist(method = "euclidean")
+hc <- hclust(dists, method = "ward.D")
+
+# cluster <- cutree(hc, k = n_clusters) %>% as.character()
+# ds_log <- bind_cols(ds_log, as.data.frame(cluster))
+
+#ds_log <- mutate(ds_log, cluster = as.character(x))
+
+ds_log <- ds_log %>% 
+    ungroup() %>%
+    select(-UORG_LOTACAO) %>%
+    mutate(cluster = hc %>% 
+               cutree(k = n_clusters) %>% 
+               as.character())
+
+hc %>% 
+    cutree(k = n_clusters) %>% 
+    silhouette(dists) %>% 
+    plot(col = RColorBrewer::brewer.pal(n_clusters, "Set2"))
+```
+
+```{r}
+library(plotly)
+p <- ds_log %>%
+    plot_ly(type = 'parcoords',
+            line = list(color = ~cluster),
+            dimensions = list(
+                #list(range = c(1, 4), label = "cluster", values = ~cluster),
+                list(range = c(0, 4),
+                     label = 'idade_mediana', values = ~idade_mediana),
+                list(range = c(0, 4),
+                     #constraintrange = c(5,6),
+                     label = 'matriculas', values = ~MATRICULAS),
+                list(range = c(0, 4),
+                     label = 'totalfuncionarios', values = ~Total_Funcionarios),
+                list(range = c(0, 4),
+                     label = 'perc40UA', values = ~perc_Prof40_UA)
+            )
+    )
+p
+```
+
+```{r}
+ds_log2 = ds_log2 %>% 
+    select(-cluster) # Remove o cluster adicionado antes lá em cima via hclust
+
+# O agrupamento de fato:
+km <- ds_log2 %>% 
+    kmeans(centers = n_clusters, nstart = 20)
+
+ds_log2.long = km %>% 
+    augment(ds_log2) %>% # Adiciona o resultado de km 
+                            # aos dados originais dw2.scaled em 
+                            # uma variável chamada .cluster
+    gather(key = "variável", 
+           value = "valor")
+ds_log2.long %>% 
+    ggplot(aes(x = `variável`, y = valor, group = UORG_LOTACAO, colour = .cluster)) + 
+    #geom_point(alpha = 0.2) + 
+    geom_line(alpha = .5) + 
+    facet_wrap(~ .cluster) 
+```
 

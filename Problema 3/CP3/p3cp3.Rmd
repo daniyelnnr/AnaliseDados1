@@ -1,0 +1,167 @@
+---
+title: "p3cp3"
+date: "20 de julho de 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+require(GGally, quietly = TRUE)
+require(reshape2, quietly = TRUE)
+require(tidyverse, quietly = TRUE, warn.conflicts = FALSE)
+library(GGally)
+library(ggfortify, warn.conflicts = F)
+library(cluster, warn.conflicts = F)
+library(ggdendro, warn.conflicts = F)
+library(broom, warn.conflicts = F)
+library(dplyr, warn.conflicts = F)
+library(factoextra)
+```
+#Introdução
+Essa análise tem como objetivo realizar a redução de dimensionalidade utilizando PCA. A visualização deverá ser feita utiizando duas dimensões. 
+
+#Dados
+Os dados analisados são provenientes do portal da transparência sobre a alocação de funcionários das unidades acadêmicas da UFCG e informações sobre as matrículas de cada uma das unidades acadêmicas. Inicialmente iremos realizar a leitura desses dados.
+```{r}
+ua_sumario <- read.csv('https://raw.githubusercontent.com/nazareno/tamanhos-da-ufcg/master/ufcg-201704-sumario-UAs-wide.csv', encoding = "UTF-8", stringsAsFactors = TRUE)
+matriculas_por_ua <- read.csv('https://raw.githubusercontent.com/nazareno/tamanhos-da-ufcg/master/16-2_matriculas_por_unidade.csv', encoding = "UTF-8", stringsAsFactors = TRUE)
+```
+
+Após essa primeira etapa, iremos organizar os dados que trabalharemos, pois são originados de dois conjuntos de dados distintos.
+```{r}
+dados.selecionados <- ua_sumario %>% 
+  inner_join(matriculas_por_ua, by = c("UORG_LOTACAO" = "NOME_FEDERAL")) %>%
+  group_by(UORG_LOTACAO) %>%
+  slice(1L) %>%
+  select(idade_mediana, MATRICULAS, Professor.40h.ou.DE, Outro)
+colnames(dados.selecionados) <- c("unidade_academica", "idade_mediana", "matriculas", "professor40h", "outros")
+glimpse(dados.selecionados)
+```
+A primeira coluna que temos é a *unidade_academica*, que indica a unidade de cada funcionário ou conjunto de funcionários.  
+A *idade_mediana* refere-se a mediana da idade dos funcionários nas unidades acadêmicas. Significa que para `idade_mediana = 20` teremos 50% de funcionários com até 20 anos de exercício do cargo.  
+Essa coluna *matriculas* mostra a quantidade de matrículas por unidade acadêmica.  
+A colina *outros* indica o número de funcionários que não são professores e exercem outras funções no departamento.  
+E por último, *professor40h* refere-se ao número  de professores que trabalham 40 horas semanais naquela unidade acadêmica.  
+Nesse ponto vemos que nosso conjunto de dados se comporta da seguinte maneira:
+```{r}
+dados.selecionados %>%
+  ungroup() %>%
+  gather(key = "variavel", value = "valor", -unidade_academica) %>%
+  ggplot(aes(x = valor)) +
+  geom_histogram(fill = "white", color = "black", bins = 20) + 
+    facet_grid(. ~ variavel, scales = "free_x")
+```
+Observamos que para `matriculas` e `outros` alguns valores destoam dos demais, então podemos realizar uma filtragem para essas colunas Observando novamente, temos:
+```{r}
+dados.filtrados <- dados.selecionados %>% 
+  ungroup() %>%
+  filter(matriculas < 6000, outros < 25) %>%
+  filter(complete.cases(.))
+
+dados.filtrados %>%
+  gather(key = "variavel", value = "valor", -unidade_academica) %>%
+  ggplot(aes(x = valor)) +
+  geom_histogram(fill = "white", color = "black", bins = 20) + 
+    facet_grid(. ~ variavel, scales = "free_x")
+```
+No entanto, nossos dados não estão na mesma escala e, alguns deles, não estão bem distríbuidos. Então nesse ponto será feita uma transformação dos dados para que sejam mais bem representados.
+```{r}
+dados.transformados <- dados.filtrados %>% 
+  mutate(idade_mediana = log10(idade_mediana)) %>%
+  mutate_at(vars(idade_mediana:outros), funs(as.numeric(scale(.))))
+dados.transformados %>%
+  gather(key = "variavel", value = "valor", -unidade_academica) %>%
+  ggplot(aes(x = valor)) +
+  geom_histogram(fill = "white", color = "black", bins = 20) + 
+    facet_grid(. ~ variavel, scales = "free_x")
+```
+Para agrupar os dados, podemos utilizar k = 4.
+```{r}
+dados.filtrados %>% 
+    select(-unidade_academica) %>% 
+    ggpairs(size = .5, 
+            lower = list(continuous = wrap("points", size = .5, alpha = 0.3)))
+
+set.seed(123)
+explorando_k = tibble(k = 1:15) %>% 
+    group_by(k) %>% 
+    do(
+        kmeans(select(dados.transformados, -unidade_academica), 
+               centers = .$k, 
+               nstart = 20) %>% glance()
+    )
+explorando_k %>% 
+    ggplot(aes(x = k, y = tot.withinss)) + 
+    geom_line() + 
+    geom_point()
+```
+Usando k = 4. 
+
+```{r}
+dados.km <- dados.transformados %>% 
+    select(-unidade_academica) %>% 
+    kmeans(centers = 4, nstart = 20)
+dados.km
+
+dados.agrupados <- dados.km %>% 
+    augment(dados.transformados)
+```
+
+#Visualizando em duas dimensões com PCA
+
+Para esta etapa, podemos entender melhor a relação das variáveis originais com os componentes da PCA. Podemos ver também essa mesma informação de PC1 e PC2 como sendo duas funções das 4 variáveis originais. Lemos que cada um dos dois componentes PC são representados pelos coeficientes.
+```{r}
+pr.out <- prcomp(select(dados.transformados, -unidade_academica), scale=TRUE)
+
+tidy(pr.out, "variables") %>% 
+    filter(PC <= 2) %>% 
+    spread(column, value)
+
+dados.pca <- dados.transformados %>% 
+    column_to_rownames("unidade_academica") %>% 
+    prcomp(scale = FALSE)# %>%
+#dados.pca
+# print(as.data.frame(dados.pca$rotation))
+```
+Podemos observar quanto de variância cada PC captura, e vemos que para dois PC's temos quase 80% da informação dos dados originais preservada. Uma opção seria considerar a utilização de um terceiro PC, para representar melhor, mas o valor para dois componentes ainda é muito bom.
+```{r}
+tidy(dados.pca, "pcs") %>% 
+    ggplot(aes(x = PC, y = cumulative, label = cumulative)) + 
+    geom_line() + 
+    geom_point() + 
+    geom_text(vjust = 1, hjust = -.1)
+```
+##Visualização
+
+Após essas observações, podemos visualizar nossos dados em duas dimensões com PCA, já agrupados.
+```{r}
+dados.ampliados <- augment(dados.pca, data = dados.agrupados)
+dados.ampliados %>% 
+    ggplot(aes(.fittedPC1, .fittedPC2, color = .cluster)) +
+    geom_point(size = 2, alpha = .6)
+```
+
+```{r}
+autoplot(dados.pca, label = F, label.size = 3, shape = T, 
+         colour = dados.km$cluster,
+         loadings = TRUE, loadings.colour = 'darkorange',
+         loadings.label = TRUE, 
+         loadings.label.size = 3)
+
+```
+Dessa forma, podemos observar que professores 40h e matriculas estão relativamente correlacionados enquanto o componente de outros funcionarios e de idade mediana diferem muito uma da outra e desse par inicial. Por isso talvez fosse interessante a utilização de 3 dimensões para representar todos os componentes.
+Com a interação e o uso de htmlwidgets, podemos ver cada variável de forma mais clara.
+```{r}
+library(highcharter)
+p <- dados.ampliados %>% 
+    hchart("scatter", hcaes(x = .fittedPC1, y = .fittedPC2, group = .cluster)) %>%
+    hc_tooltip(pointFormat = "<b>{point.unidade_academica}</b><br>
+             Idade Mediana: {point.idade_mediana:,.2f}<br>
+             Nº Professor40h: {point.professor40h:,.2f}<br>
+             Nº func. não professores: {point.outros:,.2f}<br>
+             Total de Matrículas: {point.matriculas:,.2f}")
+p
+```

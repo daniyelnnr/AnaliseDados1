@@ -1,0 +1,96 @@
+---
+title: "CP2"
+date: "23 de junho de 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+require(GGally, quietly = TRUE)
+require(reshape2, quietly = TRUE)
+require(tidyverse, quietly = TRUE, warn.conflicts = FALSE)
+library(GGally)
+library(ggfortify, warn.conflicts = F)
+library(cluster, warn.conflicts = F)
+library(ggdendro, warn.conflicts = F)
+library(broom, warn.conflicts = F)
+library(dplyr, warn.conflicts = F)
+```
+
+Realizamos a importação dos dados.
+```{r}
+ua_sumario <- read.csv('https://raw.githubusercontent.com/nazareno/tamanhos-da-ufcg/master/ufcg-201704-sumario-UAs-wide.csv', encoding = "UTF-8", stringsAsFactors = TRUE)
+matriculas_por_ua <- read.csv('https://raw.githubusercontent.com/nazareno/tamanhos-da-ufcg/master/16-2_matriculas_por_unidade.csv', encoding = "UTF-8", stringsAsFactors = TRUE)
+```
+
+Selecionamos algumas variáveis, são elas: Total de Matriculas por Unidade Academica, Total de Funcionarios por Unidade Academica, Porcentagem de Professores 40h na Unidade Academica - entre todos os funcionarios, Idade mediana - que indica que há 50% de professores com aquele tempo na UA.
+```{r}
+merged <- merge(ua_sumario, matriculas_por_ua, by.x=c("UORG_LOTACAO"), by.y=c("NOME_FEDERAL"))
+
+dados_selecionados <- ua_sumario %>% 
+  inner_join(matriculas_por_ua, by = c("UORG_LOTACAO" = "NOME_FEDERAL")) %>%
+  group_by(UORG_LOTACAO) %>%
+  slice(1L) %>%
+  mutate(Total_Funcionarios = sum(Outro,Professor.20h,Professor.40h.ou.DE),
+         perc_Prof40_UA = sum(Professor.40h.ou.DE)/Total_Funcionarios) %>%
+  mutate_each(funs(round(.,2)), perc_Prof40_UA) %>%
+  select(idade_mediana, MATRICULAS, Total_Funcionarios, perc_Prof40_UA)
+```
+Fizemos a remoção das duplicatas e agora vamos ver como estao distribuidos os dados quando comparados em pares.
+
+```{r}
+dados_selecionados %>%
+  ungroup() %>%
+  select(-UORG_LOTACAO) %>%
+  ggpairs()
+
+#filtragem dos dados
+dados_selecionados <- dados_selecionados %>%
+  filter(MATRICULAS < 6000, Total_Funcionarios < 100, perc_Prof40_UA > 0.5)
+
+dados_selecionados %>%
+  ungroup() %>%
+  select(-UORG_LOTACAO) %>%
+  ggpairs()
+```
+
+Para uma melhor visuzalização, vamos alterar as escalas para log.
+
+```{r}
+#escala de log
+ds_log <- dados_selecionados %>% 
+  mutate_each(funs(log), 1:4)
+
+ds_log %>%
+  ungroup() %>%
+  select(-UORG_LOTACAO) %>%
+  ggpairs()
+```
+Com o dendrograma, podemos pensar em um valor para ser a quantidade de clusters.
+
+```{r}
+dists = ds_log %>% 
+    column_to_rownames("UORG_LOTACAO") %>% 
+    dist(method = "euclidean")
+hc <- hclust(dists, method = "ward.D")
+plot(hc, cex = .5)
+```
+
+Testaremos se 4 agrupamentos funcionam bem, entao nesse momento k = 4 (que é o numero de clusters) e vemos que essa quantidade de grupamentos fornece uma boa distribuição de cada dado em seu respectivo grupo.
+
+```{r}
+n_clusters <- 4
+#rect.hclust(hc, k=n_clusters)
+dists = ds_log %>% 
+    column_to_rownames("UORG_LOTACAO") %>% 
+    dist(method = "euclidean")
+hc <- hclust(dists, method = "ward.D")
+
+hc %>% 
+    cutree(k = n_clusters) %>% 
+    silhouette(dists) %>% 
+    plot(col = RColorBrewer::brewer.pal(n_clusters, "Set2"))
+```
