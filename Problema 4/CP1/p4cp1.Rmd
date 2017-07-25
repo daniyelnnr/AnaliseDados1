@@ -1,0 +1,49 @@
+---
+title: "Prob 4, CP 1"
+author: "Daniyel"
+date: "23 de julho de 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#bibliotecas
+library(tidyverse, quietly = TRUE)
+library(dplyr, quietly = TRUE)
+```
+
+```{r}
+#dados
+github_data <- read.csv("https://raw.githubusercontent.com/nazareno/fpcc2/master/datasets/github-users-committing-filetypes.csv")
+glimpse(github_data)
+```
+
+```{r}
+# github_data %>%
+#   group_by(file_extension, month_day) %>%
+#   summarise(mean = mean(users))
+#criando coluna data
+github_data <- github_data %>%
+  mutate(date = paste(the_year,the_month,month_day,sep='-') %>% as.Date(.))
+
+github_data$weekday <- weekdays(as.Date(github_data$date))
+glimpse(github_data)
+
+github_data <- github_data %>%
+  mutate(is_weekend = ifelse(weekday %in% c("sábado","domingo"),TRUE,FALSE))
+
+#filtrando as extensoes que queremos
+dados_filtrados <- github_data %>%
+  filter(file_extension %in% c("java","py"))
+```
+
+```{r}
+dados_filtrados %>%
+  ggplot(aes(x = "users", y = users)) +
+  geom_jitter(width = .025, height = 0, size = 2, alpha = .5) +
+  labs(x = "", y = "users")
+```
+
