@@ -9,28 +9,35 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 #bibliotecas
 library(tidyverse, quietly = TRUE)
 library(dplyr, quietly = TRUE)
+library(ggplot2)
+library(tidyverse, quietly = TRUE)
+library(resample, quietly = TRUE)
+library(GGally, quietly = TRUE)
+library(gridExtra, quietly = TRUE)
+theme_set(theme_bw())
 ```
-
+##Dados
+Os dados analisados são referentes aos commits realizados no Github. Como iremos analisar as linguagens de programação com base na extensão dos arquivos commitados, podemos observar a quantidade de commits para cada linguagem.
 ```{r}
 #dados
 github_data <- read.csv("https://raw.githubusercontent.com/nazareno/fpcc2/master/datasets/github-users-committing-filetypes.csv")
-glimpse(github_data)
-```
+#glimpse(github_data)
 
+github_data %>%
+  group_by(file_extension) %>%
+  count(.)
+```
+Nossas perguntas requerem que tenhamos informações sobre as datas e os dias da semana dos commits feitos. Para isso iremos adicionar as colunas que nos trazem tais informações. Também iremos escolher as linguagens `Java` e `Python` para continuar a análise.
 ```{r}
-# github_data %>%
-#   group_by(file_extension, month_day) %>%
-#   summarise(mean = mean(users))
-#criando coluna data
+#informações de data e dia da semana
 github_data <- github_data %>%
   mutate(date = paste(the_year,the_month,month_day,sep='-') %>% as.Date(.))
 
 github_data$weekday <- weekdays(as.Date(github_data$date))
-glimpse(github_data)
 
 github_data <- github_data %>%
   mutate(is_weekend = ifelse(weekday %in% c("sábado","domingo"),TRUE,FALSE))
@@ -39,11 +46,133 @@ github_data <- github_data %>%
 dados_filtrados <- github_data %>%
   filter(file_extension %in% c("java","py"))
 ```
-
+Dos dados escolhidos, podemos visualizar uma linha do tempo para nos trazer informações acerca das linguagens escolhidas e os commits de cada uma. Podemos facilmente observar que no início de cada ano, a quanitade de commits diminui consideravelmente.
 ```{r}
 dados_filtrados %>%
-  ggplot(aes(x = "users", y = users)) +
-  geom_jitter(width = .025, height = 0, size = 2, alpha = .5) +
-  labs(x = "", y = "users")
+  filter(date > 2017-07-01) %>%
+  ggplot(aes(x = date, y = users, color=file_extension, shape=is_weekend)) + 
+  geom_point(size = 2) +
+  coord_fixed(ratio = 0.05)
 ```
 
+##Questão 1
+- *Para cada uma delas, há uma diferença significativa na sua popularidade durante a semana e durante o fim de semana? Essa diferença é grande?*  
+
+Inicialmente iremos filtrar e tratar os dados, para facilitar o trabalho dos dados de fim de semana e semana, de cada uma das linguagens. Os outliers serão tratados também, para uma melhor visualização da distribuição.
+```{r}
+#dados sobre a linguagem java
+dados_java <- dados_filtrados %>%
+  select(file_extension, users, is_weekend) %>%
+  filter(file_extension == "java")
+java_fds <- dados_java %>%
+  filter(is_weekend == TRUE,users>1250,users<2600)
+java_semana <- dados_java %>%
+  filter(is_weekend == FALSE,users>2750)
+
+#dados sobre a linguagem python
+dados_python <- dados_filtrados %>%
+  select(file_extension, users, is_weekend) %>%
+  filter(file_extension == "py")
+python_fds <- dados_python %>%
+  filter(is_weekend == TRUE,users>1750)
+python_semana <- dados_python %>%
+  filter(is_weekend == FALSE,users>3750)
+```
+
+No segundo momento, iremos observar a distribuição amostral da popularidade de cada uma das linguagens nos fins de semana e nos dias de semana. 
+```{r}
+#Analisando a distribuicao amostral para java, comparando a popularidade no fds e nos dias de semana
+j1 <- java_fds %>%
+  ggplot(aes(users)) +
+  geom_histogram(binwidth = 50) +
+  labs(title = "Popularidade nos finais de semana")
+j2 <- java_semana %>%
+  ggplot(aes(users)) +
+  geom_histogram(binwidth = 50) +
+  labs(title = "Popularidade nos finais de semana")
+grid.arrange(j1,j2, top = "Java")
+
+
+#Analisando a distribuicao amostral para python, comparando a popularidade no fds e nos dias de semana
+p1 <- python_fds %>%
+  ggplot(aes(users)) +
+  geom_histogram(binwidth = 50) +
+  labs(title = "Popularidade nos finais de semana")
+p2 <- python_semana %>%
+  ggplot(aes(users)) +
+  geom_histogram(binwidth = 50) +
+  labs(title = "Popularidade nos finais de semana")
+grid.arrange(p1,p2, top = "Python")
+```
+
+Para responder a essa pergunta, iremos definir a média como a estátistica a ser análisada. 
+Tendo a média como nossa estatística para a comparação, iremos realizar a comparação entre popularidade para cada uma das linguagens escolhidas utilizando o bootstrap.
+```{r}
+#amostra da linguagem java
+amostra_java_fds <- sample_n(java_fds, 100)
+colnames(amostra_java_fds) <- c("file_extension","users_java_fds","is_weekend")
+amostra_java_semana <- sample_n(java_semana, 100)
+colnames(amostra_java_semana) <- c("file_extension","users_java_sem","is_weekend")
+
+#bootstrap
+b <- bootstrap(amostra_java_fds, mean(users_java_fds))
+media_j1 <- CI.bca(b, probs = c(.025, .975))
+media_j1
+b <- bootstrap(amostra_java_semana, mean(users_java_sem))
+media_j2 <- CI.bca(b, probs = c(.025, .975))
+media_j2
+
+#amostra da linguagem python
+amostra_pyhton_fds <- sample_n(python_fds, 100)
+colnames(amostra_pyhton_fds) <- c("file_extension","users_python_fds","is_weekend")
+amostra_pyhton_semana <- sample_n(python_semana, 100)
+colnames(amostra_pyhton_semana) <- c("file_extension","users_python_sem","is_weekend")
+
+#bootstrap
+b <- bootstrap(amostra_pyhton_fds, mean(users_python_fds))
+media_p1 <- CI.bca(b, probs = c(.025, .975))
+media_p1
+b <- bootstrap(amostra_pyhton_semana, mean(users_python_sem))
+media_p2 <- CI.bca(b, probs = c(.025, .975))
+media_p2
+```
+Podemos apresentar essas informações graficamente para facilitar a compreensão.
+```{r}
+df <- data.frame(rbind(media_j1, 
+                      media_j2,
+                      media_p1,
+                      media_p2))
+df$medida = row.names(df)
+df %>% 
+  ggplot(aes(x = medida, ymin = X2.5., ymax = X97.5.)) + 
+  geom_errorbar(width = .2)
+```
+Observando o gráfico, podemos ver que, para cada linguagem, a diferença da média de usuários realizando commits é significativa. Tendo em vista que os valores estão muito discrepantes uns dos outros, podemos dizer que para essas linguagens muitos mais commits são feitos durante a semana do que em relação ao fim de semana, utilzando a média desses commits para realizar o comparativo.
+
+##Questão 2
+- *Existe uma diferença significativa entre as duas linguagens na sua variação de popularidade nos finais de semana?*  
+Para analisar a diferença na variação da popularidade entre as duas linguagens no fim de semana, vamos usar o desvio padrão como nossa estatística. As amostras serão as mesmas utilizadas para responder a pergunta anterior. Então só aplicaremos o bootstrap para a amostra dos commits de cada uma das linguagens feitos durante o fim de semana.
+```{r}
+#bootstrap para java utilizando as amostras feitas anteriormente
+b <- bootstrap(amostra_java_fds, sd(users_java_fds))
+sd_j1 <- CI.bca(b, probs = c(.025, .975))
+sd_j1
+
+#bootstrap para python utilizando as amostras feitas anteriormente
+b <- bootstrap(amostra_pyhton_fds, sd(users_python_fds))
+sd_p1 <- CI.bca(b, probs = c(.025, .975))
+sd_p1
+```
+Representando graficamente, temos:
+```{r}
+# glimpse(sd_j1)
+# sd_j1
+df <- data.frame(rbind(sd_j1, 
+                      sd_p1))
+df$medida = row.names(df)
+df %>% 
+  ggplot(aes(x = medida, ymin = X2.5., ymax = X97.5.)) + 
+  geom_errorbar(width = .2)
+```
+
+Para este caso, os intervalos se interceptam e não podemos observar uma diferença significativa. Ou seja, com base nos intervalos de confiança obtidos, não podemos dizer qual das duas linguagens apresenta maior variação nos commits durante o fim de semana.
