@@ -21,3 +21,35 @@ library(gridExtra, quietly = TRUE)
 theme_set(theme_bw())
 ```
 
+#Dados
+Os dados analisados são referentes aos commits realizados no Github. Precisamos analisar as linguagens de programação com base na extensão dos arquivos commitados e responder as perguntas que foram construídas durante o checkpoint anterior.
+```{r}
+#dados
+github_data <- read.csv("https://raw.githubusercontent.com/nazareno/fpcc2/master/datasets/github-users-committing-filetypes.csv")
+#glimpse(github_data)
+
+github_data %>%
+  group_by(file_extension) %>%
+  count(.)
+```
+
+##Primeira pergunta
+*Para uma determinada linguagem, há diferença significativa entre a estatística de popularidade que ela apresenta durante o final/início de ano e os fins de semana?*
+
+Inicialmente vamos escolher uma linguagem para ser a base de nossa análise e então iremos filtrar e modificar os dados para que eles possam ser mais fáceis de serem manipulados e responderem a nossa pergunta.
+
+```{r}
+#informações de data e dia da semana
+github_data <- github_data %>%
+  mutate(date = paste(the_year,the_month,month_day,sep='-') %>% as.Date(.))
+
+github_data$weekday <- weekdays(as.Date(github_data$date))
+
+github_data <- github_data %>%
+  mutate(is_weekend = ifelse(weekday %in% c("sábado","domingo"),TRUE,FALSE))
+```
+
+```{r}
+
+```
+
