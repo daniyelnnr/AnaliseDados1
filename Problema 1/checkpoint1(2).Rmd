@@ -1,7 +1,10 @@
 ---
+layout: post
 title: "AD1 2017.1, Problema 1 - Checkpoint 1"
 date: 22 de maio de 2017
 author: "Daniyel Rocha"
+published: true
+tags: [htmlwidgets, r]
 output: 
   html_document:
     toc: true
