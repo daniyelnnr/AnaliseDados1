@@ -1,0 +1,23 @@
+---
+title: "Prob 4, CP 3"
+author: "Daniyel"
+date: "2 de agosto de 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE, warning=FALSE}
+#bibliotecas
+library(tidyverse, quietly = TRUE)
+library(dplyr, quietly = TRUE)
+library(ggplot2)
+library(tidyverse, quietly = TRUE)
+library(resample, quietly = TRUE)
+library(GGally, quietly = TRUE)
+library(gridExtra, quietly = TRUE)
+theme_set(theme_bw())
+```
+
