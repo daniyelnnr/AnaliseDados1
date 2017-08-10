@@ -56,8 +56,6 @@ Observando as associações de nossas amostras com a nossa hipótese, podemos an
 - *Para uma determinada linguagem, há diferença significativa entre a estatística de popularidade que ela apresenta durante o final/início de ano e os fins de semana?*  
 
 Escolhemos a linguagem `Go` para responder a primeira pergunta. Precisaremos trabalhar com os dados dessa linguagem sobre o período do ano mencionado na pergunta, onde definiremos esse conjunto de dados como sendo os meses de Dezembro e Janeiro, e para os dados relativos aos fins de semana iremos utilizar os outros meses do ano. Ou seja, iremos realizar a comparação entre o período de férias dos finais de ano e os fins de semana dos outros meses do ano, analisando as relações entre os dados.
-Podemos definir nossas hipóteses como:
-- H0: 
 
 ```{r}
 dados_go <- github_data %>% filter(file_extension %in% "go")
@@ -73,10 +71,14 @@ go_anual <- dados_go %>%
   arrange(date)
 ```
 
+Após selecionar os dados que serão trabalhados, podemos realizar os testes de permutação de modo a implementar o nosso teste de hipóteses. Usaremos a estatística da mediana para definir o conceito de popularidade de nossa linguagem.
 ```{r}
-library(coin)
-oneway_test(rating ~ as.factor(title), 
-            data = sw4x5, 
-            distribution = "exact")
+library(coin, quietly = TRUE)
+permutationTest2(data = go_ferias, statistic = median(users), data2 = go_anual)
 ```
 
+Após realizar o teste de hipóteses, chegamos no p-valor de 0.614 - que se distancia muito de zero e também é maior do que nosso grau de confiança. Dessa forma, a hipótese nula é verdadeira para nosso caso e ela é aceita, mostrando que não podemos verificar indícios de associação ou uma diferença significativa entre a popularidade da linguagem durante as férias e durante o restante do ano.  
+- Esse resultado se assemelha com o que foi observado na análise para essa pergunta quando respondida utilizando os intervalos de confiança. Pelo valor do p-valor ainda ser próximo do nosso grau de confiança (0.05), podemos inferir uma pequena relação entre as estatísticas, assim como foi visto na análise anterior.  
+
+#Segunda pergunta
+- *Há uma diferença significativa entre a popularidade de js e html?*
