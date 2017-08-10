@@ -2,7 +2,10 @@
 title: "P4CP4"
 author: "Daniyel"
 date: "8 de agosto de 2017"
-output: html_document
+output: 
+  html_document:
+    toc: true
+    toc_float: true
 ---
 
 ```{r setup, include=FALSE}
@@ -18,6 +21,7 @@ library(tidyverse, quietly = TRUE)
 library(resample, quietly = TRUE)
 library(GGally, quietly = TRUE)
 library(gridExtra, quietly = TRUE)
+library(coin, quietly = TRUE)
 theme_set(theme_bw())
 ```
 
@@ -73,12 +77,32 @@ go_anual <- dados_go %>%
 
 Após selecionar os dados que serão trabalhados, podemos realizar os testes de permutação de modo a implementar o nosso teste de hipóteses. Usaremos a estatística da mediana para definir o conceito de popularidade de nossa linguagem.
 ```{r}
-library(coin, quietly = TRUE)
 permutationTest2(data = go_ferias, statistic = median(users), data2 = go_anual)
 ```
 
 Após realizar o teste de hipóteses, chegamos no p-valor de 0.614 - que se distancia muito de zero e também é maior do que nosso grau de confiança. Dessa forma, a hipótese nula é verdadeira para nosso caso e ela é aceita, mostrando que não podemos verificar indícios de associação ou uma diferença significativa entre a popularidade da linguagem durante as férias e durante o restante do ano.  
-- Esse resultado se assemelha com o que foi observado na análise para essa pergunta quando respondida utilizando os intervalos de confiança. Pelo valor do p-valor ainda ser próximo do nosso grau de confiança (0.05), podemos inferir uma pequena relação entre as estatísticas, assim como foi visto na análise anterior.  
+
+##**Comparativo com o IC**  
+Esse resultado se assemelha com o que foi observado na análise para essa pergunta quando respondida utilizando os intervalos de confiança. Entretanto, não conseguimos observar uma pequena reção entre as estatísticas, como visto na análise anterior, uma vez que o p-valor foi bem maior que o grau de confiança aplicado.  
 
 #Segunda pergunta
 - *Há uma diferença significativa entre a popularidade de js e html?*
+
+Inicialmente iremos selecionar os dados que serão necessários para responder a nossa pergunta. Queremos selecionar dois tipos de dados para trabalhar, respectivamente para os arquivos `js` e `html`.
+```{r}
+dados_js <- github_data %>% filter(file_extension %in% "js") %>% select(-month_day,-the_month,-the_year) %>% arrange(date)
+#dados_js
+
+dados_html <- github_data %>% filter(file_extension %in% "html") %>% select(-month_day,-the_month,-the_year) %>% arrange(date)
+#dados_html
+```
+
+Agora, iremos realizar o teste de hipóteses. Novamente a mediana será utilizada de modo a caracterizar a popularidade das linguagens.
+```{r}
+permutationTest2(data = dados_js, statistic = median(users), data2 = dados_html)
+```
+
+Após realizarmos a comparação entre a popularidade de html e javascript, observamos que o p-valor foi muito pequeno, resultando em 0,0002. Assim, por ser um número próximo a zero, podemos inferir que a hipótese nula tem uma chance mínima de ser verdadeira - e nos leva a aceitar a hipótese alternativa como verdadeira, que nos diz que de fato existe uma diferença significativa entre a popularidade das duas linguagens.  
+
+##**Comparativo com o IC**  
+De forma semelhante, vimos que existe uma diferença signficativa entre a popularidade delas quando utilizamos intervalos de confiança para responder essa pergunta. Ou seja, é presumível que a diferença seja consideravelmente significativa, visto que ela é percebida por dois tipos de abordagens para responder essa hipótese.

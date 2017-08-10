@@ -27,8 +27,8 @@ Disclaimer: em princípio tudo pode ser feito através de ICs, porém você ver�
 ## Os dados
 
 ```{r}
-ratings_raw <- read_csv("dados/ml-latest-small/ratings.csv", col_types = "ccdi")
-movies <- read_csv("dados/ml-latest-small/movies.csv", col_types = "ccc")
+ratings_raw <- read_csv("https://raw.githubusercontent.com/nazareno/ciencia-de-dados-1/master/4-Inferencia/dados/ml-latest-small/ratings.csv", col_types = "ccdi")
+movies <- read_csv("https://raw.githubusercontent.com/nazareno/ciencia-de-dados-1/master/4-Inferencia/dados/ml-latest-small/movies.csv", col_types = "ccc")
 ratings = full_join(ratings_raw, movies, by = "movieId")
 
 glimpse(ratings)
