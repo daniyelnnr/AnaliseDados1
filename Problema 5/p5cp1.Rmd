@@ -1,0 +1,24 @@
+---
+title: "Prob 5, CP 1"
+author: "Daniyel Rocha"
+date: "15 de agosto de 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(openintro, quietly = T)
+library(tidyverse, quietly = T)
+theme_set(theme_bw())
+library(modelr, quietly = T)
+library(broom, quietly = T)
+```
+
+```{r}
+speed_dating <- read.csv("https://raw.githubusercontent.com/nazareno/ciencia-de-dados-1/master/5-regressao/speed-dating/speed-dating.csv")
+```
+
+var dependente quanto foi engraçado e a independente quanto achou bonito
