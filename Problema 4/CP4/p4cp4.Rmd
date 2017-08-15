@@ -1,0 +1,108 @@
+---
+title: "P4CP4"
+author: "Daniyel"
+date: "8 de agosto de 2017"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE, warning=FALSE}
+#bibliotecas
+library(tidyverse, quietly = TRUE)
+library(dplyr, quietly = TRUE)
+library(ggplot2)
+library(tidyverse, quietly = TRUE)
+library(resample, quietly = TRUE)
+library(GGally, quietly = TRUE)
+library(gridExtra, quietly = TRUE)
+library(coin, quietly = TRUE)
+theme_set(theme_bw())
+```
+
+##Dados
+Os dados analisados são referentes aos commits realizados no Github. Como iremos analisar as linguagens de programação com base na extensão dos arquivos commitados, podemos observar a quantidade de commits para cada linguagem.
+```{r}
+#dados
+github_data <- read.csv("https://raw.githubusercontent.com/nazareno/fpcc2/master/datasets/github-users-committing-filetypes.csv")
+#glimpse(github_data)
+
+github_data %>%
+  group_by(file_extension) %>%
+  count(.)
+```
+
+Inicialmente vamos escolher uma linguagem para ser a base de nossa análise e então iremos filtrar e modificar os dados para que eles possam ser mais fáceis de serem manipulados e responderem as nossas pergunta.
+
+```{r}
+#informações de data e dia da semana
+github_data <- github_data %>%
+  mutate(date = paste(the_year,the_month,month_day,sep='-') %>% as.Date(.))
+
+github_data$weekday <- weekdays(as.Date(github_data$date))
+
+github_data <- github_data %>%
+  mutate(is_weekend = ifelse(weekday %in% c("sábado","domingo"),TRUE,FALSE))
+```
+#Teste de Hipóteses
+Os testes de hipóteses estão ligados aos conceitos de inferência, estudados até então nos nossos checkpoints. Este conceito é mais uma técnica utilizada para que possamos extrair conclusões (inferir) sobre uma determinada população, utilizando uma amostra dela. Usaremos dois conceitos para aplicar esse teste, a ideia da hipótese nula e da hipótese alternativa. Assim, podemos dizer que:  
+- H0 ou Hipótese Nula: o resultado do teste sendo verdadeiro para a hipótese nula irá nos mostrar que há um indício pouco significativo sobre nossa hipótese ser verdadeira.
+- H1 ou Hipótese Alternativa: é o resultado que queremos comprovar, mostrando que nossa hipótese é relevante.
+
+Observando as associações de nossas amostras com a nossa hipótese, podemos analisar quão forte esse valor será. Esse valor gerado será o p-valor, que será a probabilidade da estatística que estamos estudando ser alcançada quando considerarmos a hipótese nula verdadeira. Isso fica evidente quando pensamos que a medida que o p-valor está próximo de zero e menor que nosso grau de confiança, a hipótese nula tem pouca chance de ser verdadeira e a nossa hipótese (alternativa) ser verdadeira, confirmando a nossa hipótese.
+
+#Primeira pergunta
+- *Para uma determinada linguagem, há diferença significativa entre a estatística de popularidade que ela apresenta durante o final/início de ano e os fins de semana?*  
+
+Escolhemos a linguagem `Go` para responder a primeira pergunta. Precisaremos trabalhar com os dados dessa linguagem sobre o período do ano mencionado na pergunta, onde definiremos esse conjunto de dados como sendo os meses de Dezembro e Janeiro, e para os dados relativos aos fins de semana iremos utilizar os outros meses do ano. Ou seja, iremos realizar a comparação entre o período de férias dos finais de ano e os fins de semana dos outros meses do ano, analisando as relações entre os dados.
+
+```{r}
+dados_go <- github_data %>% filter(file_extension %in% "go")
+
+go_ferias <- dados_go %>%
+  filter(the_month %in% c(1, 12)) %>%
+  select(-month_day,-the_month,-the_year) %>%
+  arrange(date)
+
+go_anual <- dados_go %>%
+  filter(!the_month %in% c(1, 12)) %>%
+  select(-month_day,-the_month,-the_year) %>%
+  arrange(date)
+```
+
+Após selecionar os dados que serão trabalhados, podemos realizar os testes de permutação de modo a implementar o nosso teste de hipóteses. Usaremos a estatística da mediana para definir o conceito de popularidade de nossa linguagem.
+```{r}
+permutationTest2(data = go_ferias, statistic = median(users), data2 = go_anual)
+```
+
+Após realizar o teste de hipóteses, chegamos no p-valor de 0.614 - que se distancia muito de zero e também é maior do que nosso grau de confiança. Dessa forma, a hipótese nula é verdadeira para nosso caso e ela é aceita, mostrando que não podemos verificar indícios de associação ou uma diferença significativa entre a popularidade da linguagem durante as férias e durante o restante do ano.  
+
+##**Comparativo com o IC**  
+Esse resultado se assemelha com o que foi observado na análise para essa pergunta quando respondida utilizando os intervalos de confiança. Entretanto, não conseguimos observar uma pequena reção entre as estatísticas, como visto na análise anterior, uma vez que o p-valor foi bem maior que o grau de confiança aplicado.  
+
+#Segunda pergunta
+- *Há uma diferença significativa entre a popularidade de js e html?*
+
+Inicialmente iremos selecionar os dados que serão necessários para responder a nossa pergunta. Queremos selecionar dois tipos de dados para trabalhar, respectivamente para os arquivos `js` e `html`.
+```{r}
+dados_js <- github_data %>% filter(file_extension %in% "js") %>% select(-month_day,-the_month,-the_year) %>% arrange(date)
+#dados_js
+
+dados_html <- github_data %>% filter(file_extension %in% "html") %>% select(-month_day,-the_month,-the_year) %>% arrange(date)
+#dados_html
+```
+
+Agora, iremos realizar o teste de hipóteses. Novamente a mediana será utilizada de modo a caracterizar a popularidade das linguagens.
+```{r}
+permutationTest2(data = dados_js, statistic = median(users), data2 = dados_html)
+```
+
+Após realizarmos a comparação entre a popularidade de html e javascript, observamos que o p-valor foi muito pequeno, resultando em 0,0002. Assim, por ser um número próximo a zero, podemos inferir que a hipótese nula tem uma chance mínima de ser verdadeira - e nos leva a aceitar a hipótese alternativa como verdadeira, que nos diz que de fato existe uma diferença significativa entre a popularidade das duas linguagens.  
+
+##**Comparativo com o IC**  
+De forma semelhante, vimos que existe uma diferença signficativa entre a popularidade delas quando utilizamos intervalos de confiança para responder essa pergunta. Ou seja, é presumível que a diferença seja consideravelmente significativa, visto que ela é percebida por dois tipos de abordagens para responder essa hipótese.
