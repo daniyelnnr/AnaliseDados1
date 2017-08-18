@@ -12,13 +12,44 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(openintro, quietly = T)
 library(tidyverse, quietly = T)
-theme_set(theme_bw())
+library(dplyr, quietly = T)
+#theme_set(theme_bw())
 library(modelr, quietly = T)
 library(broom, quietly = T)
 ```
 
 ```{r}
-speed_dating <- read.csv("https://raw.githubusercontent.com/nazareno/ciencia-de-dados-1/master/5-regressao/speed-dating/speed-dating.csv")
+#selecionando os dados sem os NA's
+speed_dating <- na.omit(read.csv("https://raw.githubusercontent.com/nazareno/ciencia-de-dados-1/master/5-regressao/speed-dating/speed-dating.csv"))
+```
+like, int_corr(shar), attr, attr3_s
+#var dependente quanto foi engraçado e a independente quanto achou bonito
+```{r}
+dados_selecionados <- speed_dating %>%
+  select(like, shar, attr, attr3_s) 
+dados_selecionados %>%
+  ggpairs(lower = list(continuous = wrap("points", alpha = 0.3)))
+```
+```{r}
+corr.int <- lm(like ~ shar, data = dados_selecionados)
+
+int_augmented <- dados_selecionados %>% 
+  add_predictions(corr.int) %>% 
+  add_residuals(corr.int)
+
+# Modelo x dados
+int_augmented %>% 
+  ggplot(aes(x = shar)) + 
+  geom_line(aes(y = pred), colour = "blue") + 
+  geom_point(aes(y = like))
+
+# Resíduos x dados
+int_augmented %>% 
+  ggplot(aes(x = shar)) + 
+  geom_point(aes(y = resid)) +
+  geom_ref_line(h = 0, colour = "grey80")
+
+tidy(corr.int, conf.int = TRUE)
+glance(corr.int, conf.int = TRUE)
 ```
 
-var dependente quanto foi engraçado e a independente quanto achou bonito
