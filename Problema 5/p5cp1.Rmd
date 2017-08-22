@@ -16,6 +16,7 @@ library(dplyr, quietly = T)
 #theme_set(theme_bw())
 library(modelr, quietly = T)
 library(broom, quietly = T)
+library(GGally, quietly = T)
 ```
 
 ```{r}
@@ -24,32 +25,39 @@ speed_dating <- na.omit(read.csv("https://raw.githubusercontent.com/nazareno/cie
 ```
 like, int_corr(shar), attr, attr3_s
 #var dependente quanto foi engraçado e a independente quanto achou bonito
+#compartilhar interesses e hobbies de uma mesma pessoa 
+#o quanto a inteligencia e a ambição influenciam no like para pessoas maiores de 30 anos?
+#após 
 ```{r}
 dados_selecionados <- speed_dating %>%
-  select(like, shar, attr, attr3_s) 
+  select(like, shar, attr, attr3_s)
+
+median(speed_dating$order)
+
 dados_selecionados %>%
   ggpairs(lower = list(continuous = wrap("points", alpha = 0.3)))
 ```
-```{r}
-corr.int <- lm(like ~ shar, data = dados_selecionados)
 
-int_augmented <- dados_selecionados %>% 
-  add_predictions(corr.int) %>% 
-  add_residuals(corr.int)
+```{r}
+model <- lm(like ~ shar, data = dados_selecionados)
+
+data_augmented <- dados_selecionados %>% 
+  add_predictions(model) %>% 
+  add_residuals(model)
 
 # Modelo x dados
-int_augmented %>% 
+data_augmented %>% 
   ggplot(aes(x = shar)) + 
   geom_line(aes(y = pred), colour = "blue") + 
   geom_point(aes(y = like))
 
 # Resíduos x dados
-int_augmented %>% 
+data_augmented %>% 
   ggplot(aes(x = shar)) + 
   geom_point(aes(y = resid)) +
   geom_ref_line(h = 0, colour = "grey80")
 
-tidy(corr.int, conf.int = TRUE)
-glance(corr.int, conf.int = TRUE)
+tidy(model, conf.int = TRUE)
+glance(model, conf.int = TRUE)
 ```
 
