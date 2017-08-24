@@ -18,6 +18,9 @@ library(modelr, quietly = T)
 library(broom, quietly = T)
 library(GGally, quietly = T)
 ```
+# Introdução
+
+Para esta análise os dados que serão utilizados são referentes a encontros rápidos, também chamados de **"speed dating"**. Nesse tipo de encontro, diversas pessoas irão se conhecer, sendo cada par é sugerido por um sistema que foi alimentado com informações de cada participante e julga que aquele encontro deve acontecer. Após cada encontro, os participantes envolvidos deveriam preencher fichas avaliando a outra pessoa, com base em diversos critérios. Com isso, o conjunto de dados formado será analisado e perguntas envolvendo cada uma das variáveis foram elaboradas e serão respondidas neste relatório.
 
 ```{r}
 #selecionando os dados sem os NA's
@@ -27,7 +30,7 @@ like, int_corr(shar), attr, attr3_s
 #var dependente quanto foi engraçado e a independente quanto achou bonito
 #compartilhar interesses e hobbies de uma mesma pessoa 
 #o quanto a inteligencia e a ambição influenciam no like para pessoas maiores de 30 anos?
-#após 
+#quanto mais uma pessoa se acha divertida e atraente maior será a probabilidade de achar que p2 irá querer se encontrar
 ```{r}
 dados_selecionados <- speed_dating %>%
   select(like, shar, attr, attr3_s)
