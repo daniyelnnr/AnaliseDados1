@@ -1,8 +1,11 @@
 ---
 title: "Prob 5, CP 1"
 author: "Daniyel Rocha"
-date: "15 de agosto de 2017"
-output: html_document
+date: "24 de agosto de 2017"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
 ---
 
 ```{r setup, include=FALSE}
@@ -13,54 +16,133 @@ knitr::opts_chunk$set(echo = TRUE)
 library(openintro, quietly = T)
 library(tidyverse, quietly = T)
 library(dplyr, quietly = T)
-#theme_set(theme_bw())
+theme_set(theme_bw())
 library(modelr, quietly = T)
 library(broom, quietly = T)
 library(GGally, quietly = T)
 ```
 # Introdução
 
-Para esta análise os dados que serão utilizados são referentes a encontros rápidos, também chamados de **"speed dating"**. Nesse tipo de encontro, diversas pessoas irão se conhecer, sendo cada par é sugerido por um sistema que foi alimentado com informações de cada participante e julga que aquele encontro deve acontecer. Após cada encontro, os participantes envolvidos deveriam preencher fichas avaliando a outra pessoa, com base em diversos critérios. Com isso, o conjunto de dados formado será analisado e perguntas envolvendo cada uma das variáveis foram elaboradas e serão respondidas neste relatório.
+Para esta análise os dados que serão utilizados são referentes a encontros rápidos, também chamados de *"speed dating"*. Nesse tipo de encontro, diversas pessoas irão se conhecer, sendo cada par é sugerido por um sistema que foi alimentado com informações de cada participante e julga que aquele encontro deve acontecer. Após cada encontro, os participantes envolvidos deveriam preencher fichas avaliando a outra pessoa, com base em diversos critérios. Com isso, o conjunto de dados formado será analisado e perguntas envolvendo cada uma das variáveis foram elaboradas e serão respondidas neste relatório.
+
+# Os dados
+
+Diversas varíaveis compõem o conjuno de dados. As informações detalhadas sobre cada uma delas pode ser vista [aqui](https://github.com/nazareno/ciencia-de-dados-1/tree/master/5-regressao/speed-dating). De forma geral, iremos analisar as variáveis que refletem a opinião que uma pessoa teve sobre a outra durante o encontro - mas também iremos utilzar variáveis sobre as impressões que uma pessoa tem de si própria. Em um primeiro momento selecionaremos os dados, que depois serão filtrados de modo a responder as perguntas criadas.
 
 ```{r}
 #selecionando os dados sem os NA's
 speed_dating <- na.omit(read.csv("https://raw.githubusercontent.com/nazareno/ciencia-de-dados-1/master/5-regressao/speed-dating/speed-dating.csv"))
 ```
-like, int_corr(shar), attr, attr3_s
-#var dependente quanto foi engraçado e a independente quanto achou bonito
-#compartilhar interesses e hobbies de uma mesma pessoa 
-#o quanto a inteligencia e a ambição influenciam no like para pessoas maiores de 30 anos?
-#quanto mais uma pessoa se acha divertida e atraente maior será a probabilidade de achar que p2 irá querer se encontrar
+***
+# Perguntas
+
+## Primeira pergunta
+
+* Para pessoas maiores de 30 anos, quanto a inteligência e ambição irão influenciar sobre o like para outra pessoa?
+
+Com essa pergunta procuramos saber se pessoas consideradas mais maduras (se é que com 30 anos uma pessoa é madura) tendem a gostar mais de uma determinada pessoa, se também a considera mais inteligente e ambiciosa. Isso pode mostrar se esses aspectos influenciam no like, evidenciando que talvez as pessoas com essa idade procuram alguma estabilidade e essas variáveis caracterizariam alguém com o perfil que atenda um público mais 'maduro'. Realizamos a filtragem dos dados para depois criarmos um modelo de regressão linear que possa mostrar o quanto que as variáveis escolhidas influenciam no like.
 ```{r}
-dados_selecionados <- speed_dating %>%
-  select(like, shar, attr, attr3_s)
-
-median(speed_dating$order)
-
-dados_selecionados %>%
-  ggpairs(lower = list(continuous = wrap("points", alpha = 0.3)))
+p1_data <- speed_dating %>%
+  filter(age > 30) %>%
+  select(like,amb,intel)
 ```
 
+Podemos observar o quanto as variáveis estão relacionadas utilizando a análise de correlação.
+
 ```{r}
-model <- lm(like ~ shar, data = dados_selecionados)
-
-data_augmented <- dados_selecionados %>% 
-  add_predictions(model) %>% 
-  add_residuals(model)
-
-# Modelo x dados
-data_augmented %>% 
-  ggplot(aes(x = shar)) + 
-  geom_line(aes(y = pred), colour = "blue") + 
-  geom_point(aes(y = like))
-
-# Resíduos x dados
-data_augmented %>% 
-  ggplot(aes(x = shar)) + 
-  geom_point(aes(y = resid)) +
-  geom_ref_line(h = 0, colour = "grey80")
-
-tidy(model, conf.int = TRUE)
-glance(model, conf.int = TRUE)
+p1_data %>%
+  ggpairs()
 ```
 
+Vemos que a correlação entre as variáveis está num meio-termo: não é uma correlação muito forte, mas também não muito fraca.  
+Podemos definir nosso modelo de regressão, onde o like será nossa variável dependente das outras duas (inteligência e ambição).
+
+```{r}
+model_intel_amb <- lm(like ~ amb + intel, data = p1_data)
+tidy(model_intel_amb, conf.int = TRUE)
+```
+
+A tabela acima nos mostra os resultados do modelo gerado.  
+A coluna **estimate** pode nos mostrar informações sobre a magnitude dos coeficientes: isso nos indica o quanto cada uma das variáveis independentes estão influenciando no like. Os valores descritos nessa coluna irão mostrar que a inteligência (0.43) tem um peso levemente maior na variável like, em comparação com a ambição (0.30).
+O **p-valor** irá nos mostrar o quanto as variáveis independentes do modelo são significantes para nossa variável like. Como o p-valor das duas é algo próximo a zero, podemos inferir que elas representam bem nosso modelo e a relação com a variável like. Podemos também observar que esses valores estão dentro dos intervalos de confiança, fortalecendo o que observamos sobre a significância e mostrando a relevância destes elementos.  
+Vimos que nosso modelo pode mostrar quanto a inteligência e a ambição influencia no like. Mas o quanto do valor dos dados de like estão sendo explicados pelas duas variáveis? 
+
+```{r}
+glance(model_intel_amb, conf.int = TRUE)
+```
+Podemos ver o que foi perguntado acima por meio do valor de R quadrado. Vemos que as variáveis explicam pouco os dados observados, sendo algo por volta de 29%.  
+
+### Visualização do modelo
+
+```{r}
+
+model_intel_amb_aug <- speed_dating %>% 
+  data_grid(intel = seq_range(intel, 10), 
+            amb = seq_range(amb, 3)) %>% 
+  add_predictions(model_intel_amb)
+
+model_intel_amb_aug %>% 
+  ggplot(aes(x = intel, y = pred)) + 
+  geom_line() + 
+  facet_grid(. ~ amb)
+
+```
+
+De acordo com a tabela vista anteriormente, percebemos que quando nossas variáveis independentes tivessem coeficientes zero nosso intercepto seria 0.97 - podemos observar isso nessa visualização do modelo. Vemos também que a medida que a atração aumenta (representada pelos grids), maior será o valor da predição do valor do like (representado no eixo y) - quanto mais alto o valor do grid (0, 5 ou 10), mais alto o valor no eixo y. Analogamente, vemos que quanto maior o valor da inteligência (eixo x), maior será o valor da predição para o like e maior será a influência. Ou seja, o nosso modelo explica que quanto mais alto os valores de inteligência e ambição, maior será o like, mas levando em consideração os coeficientes dessas duas variáveis independentes.
+
+## Segunda pergunta
+
+* Quanto mais uma pessoa se acha divertida e atraente, maior será a chance de achar que a outra pessoa irá querer se encontrar? 
+
+Agora queremos saber se a auto-estima de uma pessoa provoca uma tendência para que ela pense que a segunda irá desejar um segundo encontro. Neste caso, iremos caracterizar a auto-estima como o quanto ela se acha divertida e atraente. Talvez fique evidente que pessoas que se vejam de forma mais positiva do que outras possam agradar mais os pares em potencial. Realizamos a filtragem dos dados para depois criarmos um modelo de regressão linear que possa mostrar o quanto que as variáveis escolhidas influenciam na chance de acontecer o encontro.
+
+```{r}
+p2_data <- speed_dating %>%
+  select(prob,attr3_s,fun3_s)
+```
+
+Observar a correlação entre as variáveis pode auxiliar o entendimento.
+
+```{r}
+p2_data %>%
+  ggpairs()
+```
+
+Como observado acima, nossas variáveis estão fracamente relacionadas, visto que a correlação entre as variáveis não é muito forte.  
+Definiremos o nosso modelo de regressão, com a variável que desejamos explicar como sendo a probabilidade do indivíduo achar que a outra pessoa querer um próximo encontro. As variáveis do modelo que serão explicativas ou independentes serão os valores que indicam quão a pessoa se acha atraente e divertida.
+
+```{r}
+model_attr_fun <- lm(prob ~ attr3_s + fun3_s, data = p2_data)
+tidy(model_attr_fun, conf.int = TRUE)
+```
+
+De acordo com a tabela, podemos analisar brevemente os resultados do modelo.  
+A coluna **estimate** vai nos falar sobre a magnitude dos coeficientes. Temos que as variáveis independentes influenciam pouco na probabilidade do novo encontro. A atraência tem como coeficiente 0.35, enquanto a diversão apresenta um valor de 0.13. Isso pode ter ligação com a correlação entre as variáveis, que apresentou um valor baixo. Ou seja, nossas variáveis não serão muito influentes na probabilidade de um novo encontro. 
+O **p-valor** irá nos mostrar o quanto as variáveis independentes do modelo são significantes para nossa variável dependente. O p-valor das duas é um valor muito pequeno, algo próximo de zero - o que nos mostra que elas são significativas e representam bem o modelo gerado. Elas também são relevantes para o modelo, visto que os intervalos de confiança não interceptam o zero (o que nos diria que há pouca relevância) e o p-valor está dentro dos intervalos, em cada uma das variáveis.  
+Vemos também que quando os coeficientes das variáveis independentes forem zero, o modelo indicará que a probabilidade de um novo encontro será algo em torno de 1.74.
+Então podemos utilizar nosso modelo para representar a influencia das variáveis sobre a probabilidade de um novo encontro. Para observar o quando dos dados são explicados pelas duas variáveis independentes, podemos analisar o R quadrado.  
+
+```{r}
+glance(model_attr_fun, conf.int = TRUE)
+```
+
+Temos que as variáveis explicam muito pouco dos dados, revelando um valor estimado em 10%. Novamente nos remete ao baixo nível de correlação dos dados.  
+
+### Visualização do modelo
+
+```{r}
+
+model_attr_fun_aug <- speed_dating %>% 
+  data_grid(attr3_s = seq_range(attr3_s, 10), 
+            fun3_s = seq_range(fun3_s, 3)) %>% 
+  add_predictions(model_attr_fun)
+
+model_attr_fun_aug %>% 
+  ggplot(aes(x = attr3_s, y = pred)) + 
+  geom_line() + 
+  facet_grid(. ~ fun3_s)
+
+```
+
+Pelo que o gráfico descreve acima, temos que cada grid representa o quanto o coeficiente da diversão própria aumenta. Mas vemos que essa variável exerce uma influencia muito pouca na probabilidade da pessoa achar que um novo encontro acontecerá, uma vez que o eixo y representa a predição dessa segunda variável e ela aumentou muito pouco ao longo deste eixo a medida que variável de diversão aumentou. Isso explica-se pelo fato do coeficiente para diversão ser muito pequeno, como foi visto anteriormente. Vemos também que o eixo x, que representa a atraência própria gera um peso um pouco maior na predição da variável independente, vista no eixo y. Isso é mais facilmente visto, pois só temos que observar a inclinação da reta, que terá relação com o coeficiente da atraência, visto anteriormente.  
+Então verifica-se que o quanto a pessoa se acha mais atraente e divertida irá exercer pouca influência na probabilidade dela achar que um novo encontro acontecerá. Talvez essas variáveis não representem bem a auto-estima das pessoas. Ou também a auto-estima não tem nenhuma ligação com a chance dela considerar que a outra pessoa deseja um novo encontro.
