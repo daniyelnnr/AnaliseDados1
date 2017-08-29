@@ -20,6 +20,30 @@ theme_set(theme_bw())
 library(modelr, quietly = T)
 library(broom, quietly = T)
 library(GGally, quietly = T)
+library(pscl, quietly = T)
+library(modelr, quietly = T) # devtools::install_github("hadley/modelr")
 ```
 
 Início
+
+```{r}
+speed_dating2 <- read.csv("https://raw.githubusercontent.com/nazareno/ciencia-de-dados-1/master/5-regressao/speed-dating/speed-dating2.csv") %>% na.omit()
+```
+
+```{r}
+speed_dating2 <- speed_dating2 %>%
+  mutate(dec = ifelse(dec == "yes", 1, 0))
+
+dados_selecionados <- speed_dating2 %>%
+  select(dec,attr,fun)
+```
+
+```{r}
+model_attr_fun <- glm(dec ~ attr + fun, 
+         data = speed_dating2,
+         family = "binomial")
+tidy(model_attr_fun)
+```
+
+
+dec ~ attr + fun
