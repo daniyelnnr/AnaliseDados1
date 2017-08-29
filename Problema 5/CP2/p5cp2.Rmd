@@ -1,0 +1,25 @@
+---
+title: "Prob 5, CP 2"
+author: "Daniyel Rocha"
+date: "29 de agosto de 2017"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(openintro, quietly = T)
+library(tidyverse, quietly = T)
+library(dplyr, quietly = T)
+theme_set(theme_bw())
+library(modelr, quietly = T)
+library(broom, quietly = T)
+library(GGally, quietly = T)
+```
+
+Início
