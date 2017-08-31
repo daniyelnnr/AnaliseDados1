@@ -15,7 +15,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(openintro, quietly = T)
 library(tidyverse, quietly = T)
-library(dplyr, quietly = T)
+#library(dplyr, quietly = T)
 theme_set(theme_bw())
 library(modelr, quietly = T)
 library(broom, quietly = T)
@@ -35,11 +35,13 @@ speed_dating2 <- speed_dating2 %>%
   mutate(dec = ifelse(dec == "yes", 1, 0))
 
 dados_selecionados <- speed_dating2 %>%
-  select(dec,attr,fun)
+  select(dec,attr,fun,intel,shar)
 ```
 
+1. Dentre os fatores que você acha que podem ter efeito no match, quais fatores têm efeito significativo na chance de p1 decidir se encontrar novamente com p2? E como é esse efeito (positivo/negativo)?
+
 ```{r}
-model_attr_fun <- glm(dec ~ attr + fun, 
+model <- glm(dec ~ attr + fun + intel + shar, 
          data = speed_dating2,
          family = "binomial")
 tidy(model_attr_fun)
