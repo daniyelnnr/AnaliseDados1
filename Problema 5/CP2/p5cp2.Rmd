@@ -12,40 +12,80 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r}
-library(openintro, quietly = T)
-library(tidyverse, quietly = T)
-#library(dplyr, quietly = T)
+```{r, include=FALSE}
+library(dplyr)
+library(GGally)
+library(pscl)
+library(broom)
+library(tidyverse)
+library(modelr) # devtools::install_github("hadley/modelr")
+
 theme_set(theme_bw())
-library(modelr, quietly = T)
-library(broom, quietly = T)
-library(GGally, quietly = T)
-library(pscl, quietly = T)
-library(modelr, quietly = T) # devtools::install_github("hadley/modelr")
 ```
 
-Início
+# Dados
+
+Para este checkpoint iremos utilizar o mesmo conjunto de dados sobre encontros rápidos que foi utilizado na atividade anterior, mas com o acréscimo da variável *dec*. Essa variável irá nos informar se o sujeito gostou da outra pessoa que ela conversou e deseja se encontrar novamente ou não. Com base nessa resposta, utilizaremos ela como variável dependente para realizar a construção de modelos de regressão logística. Com esses resultados analisaremos a influência das outras variáveis do conjunto de dados sobre a resposta do *match* e responderemos as perguntas necessárias.
 
 ```{r}
 speed_dating2 <- read.csv("https://raw.githubusercontent.com/nazareno/ciencia-de-dados-1/master/5-regressao/speed-dating/speed-dating2.csv") %>% na.omit()
 ```
 
-```{r}
+```{r, include = FALSE}
 speed_dating2 <- speed_dating2 %>%
-  mutate(dec = ifelse(dec == "yes", 1, 0))
-
-dados_selecionados <- speed_dating2 %>%
-  select(dec,attr,fun,intel,shar)
+  mutate(dec = case_when(.$dec == "no" ~ 0, 
+                         .$dec == "yes" ~ 1))
 ```
+***
 
-1. Dentre os fatores que você acha que podem ter efeito no match, quais fatores têm efeito significativo na chance de p1 decidir se encontrar novamente com p2? E como é esse efeito (positivo/negativo)?
+# Perguntas
+
+## Primeira pergunta
+
+* Dentre os fatores que você acha que podem ter efeito no match, quais fatores têm efeito significativo na chance de p1 decidir se encontrar novamente com p2? E como é esse efeito (positivo/negativo)?
+
+Para responder a esta pergunta podemos escolher as variáveis que podem exercer um efeito significativo em *dec*. Escolhemos, então, as variáveis **attr**, **fun**, **intel**, que irá nos dizer o quanto a primeira pessoa considera a segunda atraente, divertida, inteligente - respectivamente. Também optamos pela variável **shar**, sendo que esta nos mostra o quanto a pessoa pensa que compartilha interesses com a segunda pessoa.  
+Visto isso, podemos construir um modelo que busca explicar melhor o *match*, além de analisar o efeito de cada variável escolhida.
 
 ```{r}
 model <- glm(dec ~ attr + fun + intel + shar, 
          data = speed_dating2,
          family = "binomial")
-tidy(model_attr_fun)
 ```
 
+Podemos observar os valores estimados dos coeficientes de cada variável, assim como foi feito no checkpoint anterior. Entretanto, realizamos a exponenciação dos resultados de modo a observar melhor os coeficientes, uma vez que se adequa melhor a forma com a qual o modelo de regressão logística foi construído.
 
-dec ~ attr + fun
+```{r}
+tidy(model, conf.int = TRUE, exponentiate = TRUE)
+```
+
+Analisando o valor do intervalo de confiança para a variável *intel*, vemos que a inteligência inclui o 1 dentro deste intervalo. Com isso, fica evidente que por vezes o valor estimado para esta característica envolve valores que afeta positivamente e negativamente na variável *dec*. O motivo disso acontecer é que exponenciamos os resultados, então o intervalo de confiança também é alterado - se realizarmos a operação inversa provavelmente iriamos obter um intervalo de confiança que engloba o 0. Dessa forma temos que entre as variáveis selecionadas, a inteligência não é significativa para o modelo que busca explicar o *match*.  
+Além disso, temos que as variáveis que explicam atração, diversão e interesses em comum irão exercer um efeito positivo no valor de *dec*. E entre todas escolhidas, não foi observada alguma que exerça um efeito negativo na variável dependente escolhida.
+
+```{r}
+pR2(model)
+```
+
+A regressão logística não permite que tenhamos um R² para entender melhor o modelo gerado. Entretanto, podemos utilizar um pseudo R² para o nosso modelo. Escolhendo a medida de McFadden podemos ter um estimador para indicar quâo bem nosso modelo consegue explicar os *matchs*, e vemos que o valor obtido ficou em torno de 24%.
+
+
+## Segunda pergunta
+
+* Que fatores nos dados têm mais efeito na chance de um participante querer se encontrar novamente com outro?  
+
+Podemos responder essa pergunta desconsiderando os fatores que não são significativos para o nosso modelo, entre as variáveis selecionadas. Recriando o modelo, temos:
+
+```{r}
+model <- glm(dec ~ attr + fun + shar, 
+         data = speed_dating2,
+         family = "binomial")
+
+tidy(model, conf.int = TRUE, exponentiate = TRUE)
+```
+
+Considerando que todos os fatores selecionados exercem uma influência positiva sobre *dec*, podemos observar que para esse modelo *attr* aumenta muito mais a chance com que uma pessoa queira se encontrar novamente com a outra, se compararmos com as variáveis *fun* e *shar*.
+
+```{r}
+pR2(model)
+```
+Vemos que o pseudo R² ainda se mantém praticamente o mesmo, para esse novo modelo, explicando por volta de 24% dos dados.
